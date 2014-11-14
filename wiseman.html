@@ -1,0 +1,202 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+	<meta charset="UTF-8" />
+	<title>Drag-n-drop testing</title>
+	<script type="text/javascript" src="js/phaser.min.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+var brickstore;
+var instructionText;
+var raindrops;
+var ground;
+
+function preload() {
+    game.load.image('atari1', 'assets/atari400.png');
+    game.load.image('atari2', 'assets/atari800.png');
+    game.load.image('atari3', 'assets/atari800xl.png');
+    game.load.image('atari4', 'assets/atari130xe.png');
+    game.load.image('atari5', 'assets/atari1200xl.png');
+    game.load.image('starfield', 'assets/starfield.jpg');
+    game.load.image('rainbutton', 'assets/rainbutton.png');
+    game.load.image('raindrop', 'assets/raindrop.png');
+    game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
+    game.load.image('ground', 'assets/platform.png');
+}
+
+function create() {
+    instructionText = game.add.text(game.world.width/2, game.world.height/4, 'Make a house with the Ataris!', { fontSize: '32px', fill: '#FFF' });
+
+    // Create a "brick store" where the bricks are originally stored
+    brickstore = game.add.sprite(-300, -300, 'starfield');
+    //brickstore = game.add.sprite(0, game.world.height - 200, 'starfield');
+    //game.physics.arcade.enable(brickstore);
+    //brickstore.body.allowGravity = false;
+    //brickstore.body.immovable = true;
+    
+    // Create some bricks for us to play with
+    bricks = game.add.group();
+    bricks.enableBody = true;
+    for (var i = 1; i < 6; i++) {
+	brick = "atari" + i;
+	brickSprite = bricks.create(0, 0, brick);
+	brickSprite.name = brick;
+    }
+
+    raindrops = game.add.group();
+    raindrops.enableBody = true;
+ 
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+    //  Set the world (global) gravity
+    game.physics.arcade.gravity.y = 100;
+
+    // Set the brick properties
+    bricks.setAll("body.collideWorldBounds", true);
+    bricks.setAll("body.bounce.set", 0.1);
+    bricks.setAll("inputEnabled", true);
+    bricks.forEach(setupBricks, this);
+    bricks.setAll("input.useHandCursor", true);
+
+    rainButton = game.add.button(game.world.width/4, game.world.height*3/4, 'rainbutton', makeItRain, this);
+
+    ground = game.add.sprite(0, game.world.height - 25, 'ground');
+    ground.scale.setTo(2, 1);
+    game.physics.arcade.enable(ground);
+    ground.body.allowGravity = false;
+    ground.body.immovable = true;
+}
+
+function makeItRain() {
+    instructionText.setText("Now raining");
+    // Create some raindrops
+    for (var i = 0; i < 100; i++) {
+	drop = raindrops.create(0, 0, "raindrops");
+	drop.animations.add('splash', [0, 1, 2, 3], 10, false);
+	drop.kill();
+    }
+    game.time.events.add(Phaser.Timer.SECOND * 1, dropRain, this);
+}
+
+function dropRain() {
+    // Find a raindrop and drop it
+    drop = raindrops.getFirstDead();
+    if (drop != null) {	
+	drop.x = game.rnd.integerInRange(0, 100)*game.world.width/100;
+	drop.y = 0;
+	drop.revive();
+	drop.frame = 0;
+	drop.body.velocity.y = game.rnd.integerInRange(0, 50);
+    }
+    varx = game.rnd.realInRange(0, 1);
+    if (varx == 0) {
+	varx = 0.000001;
+    }
+    delay = varx;
+    //instructionText.setText("Delay = " + delay);
+    game.time.events.add(Phaser.Timer.SECOND * delay, dropRain, this);
+}
+
+function update() {
+    game.physics.arcade.collide(bricks, bricks);
+    game.physics.arcade.collide(bricks, raindrops, splash);
+    game.physics.arcade.collide(ground, raindrops, splash);
+    game.physics.arcade.collide(bricks, ground);
+    bricks.forEach(hangBrick, this);
+}
+
+// The two objects will be passed to this function in the same order
+// in which you specified them, _unless you are colliding Group
+// vs. Sprite, in which case Sprite will always be the first
+// parameter._
+function splash(ground, raindrop) {
+    // For some strange reason the raindrop will collide again after
+    // it's been transferred up top.  This keeps it from doing that.
+    if (raindrop.y > 0) {
+	raindrop.animations.play('splash', 15, false, true);
+    }
+    //instructionText.setText("Mass = " + Math.sin(0));
+    // raindrop.x = game.rnd.integerInRange(0, 100)*game.world.width/100;
+    // raindrop.y = 0;
+    // if ( raindrops.length < 100 ) {
+    // 	drop = raindrops.create(game.rnd.integerInRange(0, 100)*game.world.width/100, 0, "raindrops");
+    // 	drop.animations.add('splash', [0, 1, 2, 3], 10, false);
+    // } else {
+    // 	drop = raindrops.getFirstDead();
+    // 	if ( drop ) {
+    // 	    drop.x = game.rnd.integerInRange(0, 100)*game.world.width/100;
+    // 	    drop.y = 0;
+    // 	    drop.frame = 0;
+    // 	    drop.revive();
+    // 	}
+    // }
+}
+
+function startDrag(sprite) {
+
+    //  You can't have a sprite being moved by physics AND input, so we disable the physics while being dragged
+    sprite.body.moves = false;
+    instructionText.setText("Make a house with the Ataris!");
+}
+
+function returnToBox (brick1, brick2) {
+    // If so, then send us back to our starting position
+    instructionText.setText("Overlapping is not allowed!");
+    var tween = game.add.tween(brick1);
+    tween.to({ x:100, y:100}, 1000);
+    tween.start();
+}
+
+function stopDrag(sprite) {
+    // Check if we're overlapping with any bricks
+    game.physics.arcade.overlap(sprite, bricks, returnToBox, dontMatchYourself);
+
+    // Re-enable physics
+    sprite.body.moves = true;
+    // And make it start from rest
+    sprite.body.velocity.x = 0;
+    sprite.body.velocity.y = 0;
+}
+
+function setupBricks(brick) {
+    // Apparently callAll doesn't work, so we need to instead use a function we pass to forEach.  *sigh*
+    brick.input.enableDrag();
+    brick.events.onDragStart.add(startDrag, this);
+    brick.events.onDragStop.add(stopDrag, this);
+    brick.scale.setTo(0.5, 0.5);
+}
+
+function hangBrick(brick) {
+    // When in the sticky area, don't move
+    if ( brick.x < 200 && brick.y < 200 ) {
+	brick.body.allowGravity = false;
+	brick.body.velocity.x = 0;
+	brick.body.velocity.y = 0;
+	return;
+    } else {
+	// When you're not, do move
+	brick.body.allowGravity = true;
+    }
+}
+
+function dontMatchYourself(thing1, thing2) {
+    // Yes, overlap isn't smart enough to check whether or not something is overlapping with itself.  :(
+    if (thing1 == thing2) {
+	return false;
+    } else {
+	return true;
+    }
+}
+
+</script>
+
+</body>
+</html>

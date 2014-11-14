@@ -1,0 +1,196 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+	<meta charset="UTF-8" />
+	<title>Drag-n-drop testing</title>
+	<script type="text/javascript" src="js/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+var bricks;
+var brickstore;
+var instructionText;
+var raindrops;
+var ground;
+var brickCollisionGroup;
+var rainCollisionGroup;
+var mouseBody;
+var mouseConstraint;
+
+function preload() {
+    game.load.image('atari1', 'assets/atari400.png');
+    game.load.image('atari2', 'assets/atari800.png');
+    game.load.image('atari3', 'assets/atari800xl.png');
+    game.load.image('atari4', 'assets/atari130xe.png');
+    game.load.image('atari5', 'assets/atari1200xl.png');
+    game.load.image('starfield', 'assets/starfield.jpg');
+    game.load.image('rainbutton', 'assets/rainbutton.png');
+    game.load.image('raindrop', 'assets/raindrop.png');
+    game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
+    game.load.image('ground', 'assets/platform.png');
+}
+
+function create() {
+    instructionText = game.add.text(game.world.width/2, game.world.height/4, 'Make a house with the Ataris!', { fontSize: '32px', fill: '#FFF' });
+
+    // Create a "brick store" where the bricks are originally stored
+    brickstore = game.add.sprite(-300, -300, 'starfield');
+
+    // Enable p2 physics
+    game.physics.startSystem(Phaser.Physics.P2JS);
+    game.physics.p2.gravity.y = 1000;
+    // Collisions must be two-way: each collision group must be set to
+    // collide with all other collision groups.  One-way collisions
+    // don't happen.
+    brickCollisionGroup = game.physics.p2.createCollisionGroup();
+    rainCollisionGroup = game.physics.p2.createCollisionGroup();
+    groundCollisionGroup = game.physics.p2.createCollisionGroup();
+
+    //  This part is vital if you want the objects with their own collision groups to still collide with the world bounds
+    //  (which we do) - what this does is adjust the bounds to use its own collision group.
+    game.physics.p2.updateBoundsCollisionGroup();
+
+    // Allow collision events
+    game.physics.p2.setImpactEvents(true);
+
+    ground = game.add.sprite(0, game.world.height, 'ground');
+    ground.scale.setTo(4, 1);
+    game.physics.p2.enable(ground);
+    ground.body.static = true;
+    ground.body.setCollisionGroup(groundCollisionGroup);
+    ground.body.collides([brickCollisionGroup, rainCollisionGroup]);
+    
+    // Create some bricks for us to play with
+    bricks = game.add.group(game.world, "bricks", false, true, Phaser.Physics.P2);
+    for (var i = 1; i < 6; i++) {
+    	brick = "atari" + i;
+    	brickSprite = bricks.create(0, 0, brick);
+    	brickSprite.name = brick;
+	brickSprite.scale.setTo(0.5, 0.5);
+	brickSprite.inputEnabled = true;
+	brickSprite.input.useHandCursor = true;
+	// Doesn't work with p2, we have to enable drag in a different way
+	//brickSprite.input.enableDrag();
+	game.physics.p2.enable(brickSprite);
+    	// Unnecessary, since this is what it does by default
+    	//brickSprite.body.setRectangleFromSprite();
+    	brickSprite.body.setCollisionGroup(brickCollisionGroup);
+    	brickSprite.body.collides([brickCollisionGroup, groundCollisionGroup, rainCollisionGroup]);
+    }
+
+    raindrops = game.add.group(game.world, "raindrops", false, true, Phaser.Physics.P2);
+ 
+    rainButton = game.add.button(game.world.width/4, game.world.height*3/4, 'rainbutton', makeItRain, this);
+
+    // create physics body for mouse which we will use for dragging clicked bodies
+    mouseBody = new p2.Body();
+    game.physics.p2.world.addBody(mouseBody);
+    
+    // attach pointer events for dragging
+    game.input.onDown.add(click, this);
+    game.input.onUp.add(release, this);
+    game.input.addMoveCallback(move, this);
+}
+
+function makeItRain() {
+    instructionText.setText("Now raining");
+    // Create some raindrops
+    for (var i = 0; i < 100; i++) {
+	drop = raindrops.create(0, 0, "raindrops");
+	game.physics.p2.enable(drop);
+	drop.animations.add('splash', [0, 1, 2, 3], 10, false);
+    	drop.body.setCollisionGroup(rainCollisionGroup);
+    	drop.body.collides([brickCollisionGroup, groundCollisionGroup], splash, this);
+	drop.kill();
+    }
+    game.time.events.add(Phaser.Timer.SECOND * 1, dropRain, this);
+}
+
+function dropRain() {
+    // Find a raindrop and drop it
+    drop = raindrops.getFirstDead();
+    if (drop != null) {	
+	drop.body.x = game.rnd.integerInRange(0, 100)*game.world.width/100;
+	drop.body.y = 0;
+	drop.revive();
+	drop.frame = 0;
+    }
+    varx = game.rnd.realInRange(0, 1);
+    if (varx == 0) {
+	varx = 0.000001;
+    }
+    delay = varx;
+    //instructionText.setText("Delay = " + delay);
+    game.time.events.add(Phaser.Timer.SECOND * delay, dropRain, this);
+}
+
+function update() {
+    bricks.forEach(hangBrick, this);
+}
+
+function splash(raindrop, ground, shape1, shape2) {
+    raindrop.sprite.animations.play('splash', 15, false, true);
+}
+
+function hangBrick(brick) {
+    // When in the sticky area, don't move
+    if ( brick.x < 200 && brick.y < 200 && brick.alive) {
+	brick.body.motionState = Phaser.Physics.P2.Body.STATIC;
+	return;
+    } else {
+	// When you're not, do move
+	brick.body.motionState = Phaser.Physics.P2.Body.DYNAMIC;
+    }
+}
+
+function click(pointer) {
+    brickbodies = [];
+    for (var ii = 0; ii < bricks.length; ii++) {
+	brick = bricks.next();
+	brickbodies[ii] = brick.body;
+    }
+
+    var bodies = game.physics.p2.hitTest(pointer.position, brickbodies);
+    
+    // p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
+    var physicsPos = [game.physics.p2.pxmi(pointer.position.x), game.physics.p2.pxmi(pointer.position.y)];
+    
+    if (bodies.length)
+    {
+	var clickedBody = bodies[0];
+	clickedBody.parent.sprite.alive = false;
+	
+	var localPointInBody = [0, 0];
+	// this function takes physicsPos and coverts it to the body's local coordinate system
+	clickedBody.toLocalFrame(localPointInBody, physicsPos);
+	
+	// use a revoluteContraint to attach mouseBody to the clicked body
+	//mouseConstraint = this.game.physics.p2.createRevoluteConstraint(mouseBody, [0, 0], clickedBody, [game.physics.p2.mpxi(localPointInBody[0]), game.physics.p2.mpxi(localPointInBody[1]) ]);
+	mouseConstraint = this.game.physics.p2.createLockConstraint(mouseBody, clickedBody);
+    }	
+}
+
+function release() {
+    // remove constraint from object's body
+    mouseConstraint.bodyB.parent.sprite.alive = true;
+    game.physics.p2.removeConstraint(mouseConstraint);
+}
+
+function move(pointer) {
+    // p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
+    mouseBody.position[0] = game.physics.p2.pxmi(pointer.position.x);
+    mouseBody.position[1] = game.physics.p2.pxmi(pointer.position.y);
+}
+
+</script>
+
+</body>
+</html>
