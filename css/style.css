@@ -1,0 +1,44 @@
+body.loading #prestart, body.loading #container { display: none; }
+body.prestart #loading, body.prestart #container { display: none; }
+body.game #prestart, body.game #loading { display: none; }
+
+#loading
+{
+    padding: 3em 0 0 5em;
+    font-size: 24px;
+    font-weight: bold;
+    /* Fade in the loading text so it doesn't flash on for typical fast connections. */
+    -webkit-animation: fadein 2s ease-in 0.5s;
+    animation: fadein 2s ease-in 0.5s;
+}
+
+@-webkit-keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+#prestart {
+    padding: 8px;
+}
+#fool_full_screen, #fool_4_3, #fool_16_9,
+#wise_full_screen, #wise_4_3, #wise_16_9
+{
+    box-sizing: content-box;
+    width: 200px;
+    height: 150px;
+    border: 1px solid #888;
+    padding: 0;
+    margin: 8px;
+    background: url("../assets/screenmode.png");
+    cursor: pointer;
+}
+
+#fool_full_screen { background-position: 0 0; }
+#fool_4_3 { background-position: -200px 0; }
+#fool_16_9 { background-position: -400px 0; }
+#wise_full_screen { background-position: 0 -150px; }
+#wise_4_3 { background-position: -200px -150px; }
+#wise_16_9 { background-position: -400px -150px; }
+
+html, body { margin:0; padding: 0; }
+/* We need !important because Phaser 2.2.1 sets pixel width and height on the style attribute. */
+canvas { width: 100% !important; height: auto !important; }
+#container { width: 100%; }
