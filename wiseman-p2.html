@@ -171,6 +171,7 @@ function click(pointer) {
 	var localPointInBody = [0, 0];
 	// this function takes physicsPos and coverts it to the body's local coordinate system
 	clickedBody.toLocalFrame(localPointInBody, physicsPos);
+	clickedBody.fixedRotation = true;
 	
 	// use a revoluteContraint to attach mouseBody to the clicked body
 	//mouseConstraint = this.game.physics.p2.createRevoluteConstraint(mouseBody, [0, 0], clickedBody, [game.physics.p2.mpxi(localPointInBody[0]), game.physics.p2.mpxi(localPointInBody[1]) ]);
@@ -181,6 +182,7 @@ function click(pointer) {
 function release() {
     // remove constraint from object's body
     mouseConstraint.bodyB.parent.sprite.alive = true;
+    mouseConstraint.bodyB.fixedRotation = false;
     game.physics.p2.removeConstraint(mouseConstraint);
 }
 
