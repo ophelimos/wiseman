@@ -28,12 +28,6 @@ var background;
 var materials;
 
 function preload() {
-    game.load.image('atari1', 'assets/atari400.png');
-    game.load.image('atari2', 'assets/atari800.png');
-    game.load.image('atari3', 'assets/atari800xl.png');
-    game.load.image('atari4', 'assets/atari130xe.png');
-    game.load.image('atari5', 'assets/atari1200xl.png');
-    game.load.image('starfield', 'assets/starfield.jpg');
     game.load.image('rainbutton', 'assets/rainbutton.png');
     game.load.image('raindrop', 'assets/raindrop.png');
     game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
@@ -54,7 +48,7 @@ function create() {
 
 // Create the startscreen stage
 function create_startscreen() {
-    instructionText = game.add.text(game.world.width/4, game.world.height/4, 'Welcome to the Parable\nof the Sower!', { fontSize: '32px', fill: '#FFF', align: "center" });
+    instructionText = game.add.text(game.world.width/4, game.world.height/4, 'Welcome to the Parable\nof the Wise and Foolish Builders!', { fontSize: '32px', fill: '#FFF', align: "center" });
     startButton = game.add.button(game.world.width/4, game.world.height*3/4, 'startbutton', startGame, this);
 }
 
@@ -71,7 +65,7 @@ function create_wiseman_build() {
     
     // Enable p2 physics
     game.physics.startSystem(Phaser.Physics.P2JS);
-    game.physics.p2.gravity.y = 10000;
+    game.physics.p2.gravity.y = 1000;
     // Collisions must be two-way: each collision group must be set to
     // collide with all other collision groups.  One-way collisions
     // don't happen.
@@ -99,12 +93,14 @@ function create_wiseman_build() {
     // Two buttons at the bottom
     moreButton = game.add.button(game.world.width-(71*2), game.world.height*5/6, 'morebutton', getMore, this);    
     nextButton = game.add.button(game.world.width-71, game.world.height*5/6, 'nextbutton', goNext, this);
-   /* materials = game.add.group(game.world, "materials", false, false); */
+    // Sprites for the actual materials
     for (var i = 1; i <= 4; i++) {
     	material = "material" + i;
-    	materialButton = game.add.button(game.world.width*7/8, game.world.height*5/6-100*i, material, grabMaterial, this);
-    	materialButton.name = material;
-    	materialButton.scale.setTo(0.15, 0.15);
+    	materialSprite = game.add.sprite(game.world.width*7/8, game.world.height*5/6-100*i, material);
+    	materialSprite.name = material;
+    	materialSprite.scale.setTo(0.15, 0.15);
+	materialSprite.inputEnabled = true;
+	materialSprite.events.onInputDown.add(spawnMaterial, materialSprite);
     }
 
     // We don't actually create bricks until they click on one to create
@@ -164,17 +160,6 @@ function splash(raindrop, ground, shape1, shape2) {
     raindrop.sprite.animations.play('splash', 15, false, true);
 }
 
-function hangBrick(brick) {
-    // When in the sticky area, don't move
-    if ( brick.x < 200 && brick.y < 200 && brick.alive) {
-	brick.body.motionState = Phaser.Physics.P2.Body.STATIC;
-	return;
-    } else {
-	// When you're not, do move
-	brick.body.motionState = Phaser.Physics.P2.Body.DYNAMIC;
-    }
-}
-
 function click(pointer) {
     // Check if we hit a brick
     brickbodies = [];
@@ -182,23 +167,15 @@ function click(pointer) {
 	brick = bricks.next();
 	brickbodies[ii] = brick.body;
     }
-
-     /* // Check if we hit a material
-     materialbodies = [];
-     for (var ii = 0; ii < materials.length; ii++) {
-     material = materials.next();
-     materialbodies[ii] = material.body;
-     } */
     
-    var bodies = game.physics.p2.hitTest(pointer.position, brickbodies);
+    var hitbodies = game.physics.p2.hitTest(pointer.position, brickbodies);
     
-    if (bodies.length)
+    if (hitbodies.length)
     {
-	var clickedBody = bodies[0].parent;
+	var clickedBody = hitbodies[0].parent;
 	pickUpBody(clickedBody, pointer);
 	return;
     }
-
 }
 
 function pickUpBody(clickedBody, pointer) {
@@ -236,10 +213,9 @@ function goNext() {
 function getMore() {
 }
 
-function grabMaterial(materialButton) {
-    // We can use the button name to determine which button was pressed, and hence, which material to create
-    brick = materialButton.name;
-    brickSprite = bricks.create(materialButton.x, materialButton.y, brick);
+function spawnMaterial() {
+    brick = this.name;
+    brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, brick);
     brickSprite.name = brick;
     brickSprite.scale.setTo(0.25, 0.25);
     brickSprite.inputEnabled = true;
@@ -251,7 +227,9 @@ function grabMaterial(materialButton) {
     //brickSprite.body.setRectangleFromSprite();
     brickSprite.body.setCollisionGroup(brickCollisionGroup);
     brickSprite.body.collides([brickCollisionGroup, groundCollisionGroup, rainCollisionGroup]);
-     /* pickUpBody(brickSprite.body, game.input.activePointer); */
+    // Don't allow rotation
+    brickSprite.body.fixedRotation = true;
+    pickUpBody(brickSprite.body, game.input.activePointer);
 }
 
 </script>
