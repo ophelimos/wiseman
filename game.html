@@ -16,16 +16,12 @@
 
 var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 var bricks;
-var brickstore;
 var instructionText;
 var raindrops;
-var ground;
 var brickCollisionGroup;
 var rainCollisionGroup;
 var mouseBody;
 var mouseConstraint;
-var background;
-var materials;
 
 function preload() {
     game.load.image('rainbutton', 'assets/rainbutton.png');
@@ -60,7 +56,7 @@ function startGame() {
 
 // Create the wiseman building stage
 function create_wiseman_build() {
-    background = game.add.sprite(0, 0, 'wise_man_bg');
+    var background = game.add.sprite(0, 0, 'wise_man_bg');
     background.scale.setTo(0.390625, 0.390625);
     
     // Enable p2 physics
@@ -80,7 +76,7 @@ function create_wiseman_build() {
     // Allow collision events
     game.physics.p2.setImpactEvents(true);
 
-    ground = game.add.sprite(0, game.world.height*7/10, 'ground');
+    var ground = game.add.sprite(0, game.world.height*7/10, 'ground');
     // Ground sprite is 200 pixels wide, we want it to be 3/4 of the screen long
     var groundLength = 200;
     ground.scale.setTo((3*game.world.width)/(4*groundLength), 1);
@@ -153,7 +149,6 @@ function dropRain() {
 }
 
 function update() {
-    // bricks.forEach(hangBrick, this);
 }
 
 function splash(raindrop, ground, shape1, shape2) {
