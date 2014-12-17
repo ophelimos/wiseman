@@ -26,6 +26,17 @@
         box.y = ref.y + (ref.height * refAlign.y - box.y) / 100;
         return box;
     };
+
+    // James' globals
+    var bricks;
+    var instructionText;
+    var raindrops;
+    var brickCollisionGroup;
+    var rainCollisionGroup;
+    var groundCollisionGroup;
+    var mouseBody;
+    var mouseConstraint;
+    var startButton;
     
     [
     //   element id, sprite, scale, existing elements to connect to, position relative to first connected element
@@ -99,9 +110,22 @@
                 game.load.image('bg', 'assets/bg_' + screenModes[screenMode].background + '.jpg');
                 game.load.image('arrow', 'assets/arrow.png');
                 game.load.spritesheet('planks', 'assets/planks.jpg', 90, 600);
+		game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
                 _.forOwn(parts, function(file, key) {
                     game.load.image(key, 'assets/building/' + file);
                 });
+		game.load.image('rainbutton', 'assets/rainbutton.png');
+		game.load.image('raindrop', 'assets/raindrop.png');
+		game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
+		game.load.image('ground', 'assets/platform.png');
+		game.load.image('startbutton', 'assets/startbutton.png');
+		game.load.image('wise_man_bg', 'assets/backgrounds/wise_man_BG_fill.jpg');
+		game.load.image('material1', 'assets/building/wisemanhouse_leftroof_prelim.png');
+		game.load.image('material2', 'assets/building/wisemanhouse_rightroof_prelim.png');
+		game.load.image('material3', 'assets/building/wisemanhouse_plank_previs.jpg');
+		game.load.image('material4', 'assets/building/wisemanhouse_doorpanel_prelim.jpg');
+		game.load.image('nextbutton', 'assets/nextbutton.png');
+		game.load.image('morebutton', 'assets/morebutton.png');
             },
             create: function() {
                 var size, pos, spr;
@@ -239,6 +263,11 @@
                         arrow.motionState = Phaser.Physics.P2.Body.DYNAMIC;
                     }
                 });
+
+		// James' button
+		instructionText = game.add.text(game.world.width/4, game.world.height/4, 'Welcome to the Parable\nof the Wise and Foolish Builders!', { fontSize: '32px', fill: '#FFF', align: "center" });
+		startButton = game.add.button(game.world.width/4, game.world.height*3/4, 'startbutton', startGame, this);
+		
             },
             update: function() {
                 var angle = (game.input.y * -75/height) + 60;
@@ -307,10 +336,186 @@
         if (document.readyState === 'complete') {
             document.removeEventListener('readystatechange', onComplete);
             document.body.className = "prestart";
-            Phaser.Device.whenReady(setUpPrestart);
+            // Phaser.Device.whenReady(setUpPrestart);
+	    setUpPrestart(Phaser.Device);
         }
     };
     document.addEventListener("readystatechange", onComplete);
     onComplete();
+
+    // James' functions
+    function startGame() {
+	instructionText.visible = false;
+	startButton.visible = false;
+	create_wiseman_build();
+    }
+    
+    // Create the wiseman building stage
+    function create_wiseman_build() {
+	var background = game.add.sprite(0, 0, 'wise_man_bg');
+	background.scale.setTo(0.390625, 0.390625);
+	
+	// P2 Physics already enabled by Josh's code
+	// Collisions must be two-way: each collision group must be set to
+	// collide with all other collision groups.  One-way collisions
+	// don't happen.
+	brickCollisionGroup = game.physics.p2.createCollisionGroup();
+	rainCollisionGroup = game.physics.p2.createCollisionGroup();
+	groundCollisionGroup = game.physics.p2.createCollisionGroup();
+
+	//  This part is vital if you want the objects with their own collision groups to still collide with the world bounds
+	//  (which we do) - what this does is adjust the bounds to use its own collision group.
+	game.physics.p2.updateBoundsCollisionGroup();
+
+	// Allow collision events
+	game.physics.p2.setImpactEvents(true);
+
+	var ground = game.add.sprite(0, game.world.height*7/10, 'ground');
+	// Ground sprite is 200 pixels wide, we want it to be 3/4 of the screen long
+	var groundLength = 200;
+	ground.scale.setTo((3*game.world.width)/(4*groundLength), 1);
+	game.physics.p2.enable(ground);
+	ground.body.static = true;
+	ground.body.setCollisionGroup(groundCollisionGroup);
+	ground.body.collides([brickCollisionGroup, rainCollisionGroup]);
+
+	// Create a selection bar on the right of building blocks
+	// Two buttons at the bottom
+	var moreButton = game.add.button(game.world.width-(71*2), game.world.height*5/6, 'morebutton', getMore, this);    
+	var nextButton = game.add.button(game.world.width-71, game.world.height*5/6, 'nextbutton', goNext, this);
+	// Sprites for the actual materials
+	for (var i = 1; i <= 4; i++) {
+    	    var material = "material" + i;
+    	    var materialSprite = game.add.sprite(game.world.width*7/8, game.world.height*5/6-100*i, material);
+    	    materialSprite.name = material;
+    	    materialSprite.scale.setTo(0.15, 0.15);
+	    materialSprite.inputEnabled = true;
+	    materialSprite.events.onInputDown.add(spawnMaterial, materialSprite);
+	}
+
+	// We don't actually create bricks until they click on one to create
+	bricks = game.add.group(game.world, "bricks", false, true, Phaser.Physics.P2);
+	
+	raindrops = game.add.group(game.world, "raindrops", false, true, Phaser.Physics.P2);
+	
+	var rainButton = game.add.button(game.world.width/4, game.world.height*3/4, 'rainbutton', makeItRain, this);
+
+	// create physics body for mouse which we will use for dragging clicked bodies
+	mouseBody = new p2.Body();
+	game.physics.p2.world.addBody(mouseBody);
+	
+	// attach pointer events for dragging
+	game.input.onDown.add(click, this);
+	game.input.onUp.add(release, this);
+	game.input.addMoveCallback(move, this);
+    }
+
+    function makeItRain() {
+	instructionText.setText("Now raining");
+	// Create some raindrops
+	for (var i = 0; i < 100; i++) {
+	    var drop = raindrops.create(0, 0, "raindrops");
+	    game.physics.p2.enable(drop);
+	    drop.animations.add('splash', [0, 1, 2, 3], 10, false);
+    	    drop.body.setCollisionGroup(rainCollisionGroup);
+    	    drop.body.collides([brickCollisionGroup, groundCollisionGroup], splash, this);
+	    drop.kill();
+	}
+	game.time.events.add(Phaser.Timer.SECOND * 1, dropRain, this);
+    }
+
+    function dropRain() {
+	// Find a raindrop and drop it
+	var drop = raindrops.getFirstDead();
+	if (drop != null) {	
+	    drop.body.x = game.rnd.integerInRange(0, 100)*game.world.width/100;
+	    drop.body.y = 0;
+	    drop.revive();
+	    drop.frame = 0;
+	}
+	var varx = game.rnd.realInRange(0, 1);
+	if (varx == 0) {
+	    varx = 0.000001;
+	}
+	var delay = varx;
+	//instructionText.setText("Delay = " + delay);
+	game.time.events.add(Phaser.Timer.SECOND * delay, dropRain, this);
+    }
+
+    function splash(raindrop, ground, shape1, shape2) {
+	raindrop.sprite.animations.play('splash', 15, false, true);
+    }
+
+    function click(pointer) {
+	// Check if we hit a brick
+	var brickbodies = [];
+	for (var ii = 0; ii < bricks.length; ii++) {
+	    var brick = bricks.next();
+	    brickbodies[ii] = brick.body;
+	}
+	
+	var hitbodies = game.physics.p2.hitTest(pointer.position, brickbodies);
+	
+	if (hitbodies.length)
+	{
+	    var clickedBody = hitbodies[0].parent;
+	    pickUpBody(clickedBody, pointer);
+	    return;
+	}
+    }
+
+    function pickUpBody(clickedBody, pointer) {
+	clickedBody.sprite.alive = false;
+
+	// p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
+	var physicsPos = [game.physics.p2.pxmi(pointer.position.x), game.physics.p2.pxmi(pointer.position.y)];
+	var localPointInBody = [0, 0];
+	// this function takes physicsPos and converts it to the body's local coordinate system
+	clickedBody.toLocalFrame(localPointInBody, physicsPos);
+	
+	// use a revoluteContraint to attach mouseBody to the clicked body
+	//mouseConstraint = this.game.physics.p2.createRevoluteConstraint(mouseBody, [0, 0], clickedBody, [game.physics.p2.mpxi(localPointInBody[0]), game.physics.p2.mpxi(localPointInBody[1]) ]);
+	mouseConstraint = global.game.physics.p2.createLockConstraint(mouseBody, clickedBody);
+	
+    }
+
+    function release() {
+	// remove constraint from object's body
+	if (mouseConstraint != undefined) {
+	    mouseConstraint.bodyB.parent.sprite.alive = true;
+	    game.physics.p2.removeConstraint(mouseConstraint);
+	}
+    }
+
+    function move(pointer) {
+	// p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
+	mouseBody.position[0] = game.physics.p2.pxmi(pointer.position.x);
+	mouseBody.position[1] = game.physics.p2.pxmi(pointer.position.y);
+    }
+
+    function goNext() {
+    }
+
+    function getMore() {
+    }
+
+    function spawnMaterial() {
+	var brick = this.name;
+	var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, brick);
+	brickSprite.name = brick;
+	brickSprite.scale.setTo(0.25, 0.25);
+	brickSprite.inputEnabled = true;
+	brickSprite.input.useHandCursor = true;
+	// Doesn't work with p2, we have to enable drag in a different way
+	//brickSprite.input.enableDrag();
+	game.physics.p2.enable(brickSprite);
+	// Unnecessary, since this is what it does by default
+	//brickSprite.body.setRectangleFromSprite();
+	brickSprite.body.setCollisionGroup(brickCollisionGroup);
+	brickSprite.body.collides([brickCollisionGroup, groundCollisionGroup, rainCollisionGroup]);
+	// Don't allow rotation
+	brickSprite.body.fixedRotation = true;
+	pickUpBody(brickSprite.body, game.input.activePointer);
+    }
     
 })();
