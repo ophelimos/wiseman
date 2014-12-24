@@ -28,6 +28,7 @@
     };
 
     // James' globals
+    var inJames = false;
     var bricks;
     var instructionText;
     var raindrops;
@@ -119,7 +120,7 @@
 		game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
 		game.load.image('ground', 'assets/platform.png');
 		game.load.image('startbutton', 'assets/startbutton.png');
-		game.load.image('wise_man_bg', 'assets/backgrounds/wise_man_BG_fill.jpg');
+		game.load.image('wise_man_bg', 'assets/backgrounds/wise_man_BG_prelim.jpg');
 		game.load.image('material1', 'assets/building/wisemanhouse_leftroof_prelim.png');
 		game.load.image('material2', 'assets/building/wisemanhouse_rightroof_prelim.png');
 		game.load.image('material3', 'assets/building/wisemanhouse_plank_previs.jpg');
@@ -270,6 +271,9 @@
 		
             },
             update: function() {
+		if (inJames) {
+		    return;
+		}
                 var angle = (game.input.y * -75/height) + 60;
                 if (arrow.static) {
                     arrow.angle = angle;
@@ -345,6 +349,7 @@
 
     // James' functions
     function startGame() {
+	inJames = true;
 	instructionText.visible = false;
 	startButton.visible = false;
 	create_wiseman_build();
@@ -352,8 +357,10 @@
     
     // Create the wiseman building stage
     function create_wiseman_build() {
-	var background = game.add.sprite(0, 0, 'wise_man_bg');
-	background.scale.setTo(0.390625, 0.390625);
+	var pos = alignBox(game.camera.view, { x: 50, y: 50 }, global.sky, { x: 50, y: 50 });
+	var background = game.add.image(pos.x, pos.y, 'wise_man_bg');
+	background.width = global.sky.width;
+	background.height = global.sky.height;
 	
 	// P2 Physics already enabled by Josh's code
 	// Collisions must be two-way: each collision group must be set to
@@ -370,10 +377,13 @@
 	// Allow collision events
 	game.physics.p2.setImpactEvents(true);
 
-	var ground = game.add.sprite(0, game.world.height*7/10, 'ground');
-	// Ground sprite is 200 pixels wide, we want it to be 3/4 of the screen long
-	var groundLength = 200;
-	ground.scale.setTo((3*game.world.width)/(4*groundLength), 1);
+	// FYI: Platform is roughly from (100, 1295) to (1100, 1295)
+        var platform = { x: 200, y: 1280, width: 800, height: 20 };
+        // adjust for background position
+        platform.y += (global.sky.height - 1536) / 2;
+        var groundBitmap = game.add.bitmapData(2048, 1);
+        groundBitmap.fill(0x00, 0x99, 0xCC, 1);
+        var ground = game.add.sprite(0 + groundBitmap.width/2, platform.y + groundBitmap.height/2, groundBitmap);
 	game.physics.p2.enable(ground);
 	ground.body.static = true;
 	ground.body.setCollisionGroup(groundCollisionGroup);
@@ -386,7 +396,7 @@
 	// Sprites for the actual materials
 	for (var i = 1; i <= 4; i++) {
     	    var material = "material" + i;
-    	    var materialSprite = game.add.sprite(game.world.width*7/8, game.world.height*5/6-100*i, material);
+    	    var materialSprite = game.add.sprite(game.world.width-(72*2), game.world.height*5/6-100*i, material);
     	    materialSprite.name = material;
     	    materialSprite.scale.setTo(0.15, 0.15);
 	    materialSprite.inputEnabled = true;
