@@ -192,10 +192,22 @@
                 game.physics.p2.enable(spr);
                 scene.push([spr, spr.body.x, spr.body.y, spr.body.angle]);
                 var side = spr;
+                
+                pos.x -= 800;
+                pos.y -= 570;
+                spr = game.add.sprite(pos.x, pos.y, 'wise_leftroof');
+                game.physics.p2.enable(spr);
+                scene.push([spr, spr.body.x, spr.body.y, spr.body.angle]);
+                spr.body.clearShapes();
+                var error = -80;
+                spr.body.addPolygon({ skipSimpleCheck: 1 }, [80+error,283, 495+error,282, 495+error,60, 80+error,230]);
+                spr.body.debug = true;
+                var roofLeft = spr;
 
                 lock(door, ground, 10);
                 lock(side, ground, 10);
                 lock(door, side, 5);
+                lock(roofLeft, door, 5);
 
                 /*
                 // planky
