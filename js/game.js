@@ -2,6 +2,7 @@
     "use strict";
 
     var global = window;
+    var cur_objects = Object();
     var $1 = document.querySelector.bind(document), $s = document.querySelectorAll.bind(document);
     var screenModes = {
         'fool_full_screen': { background: 'fool', ratio: function(){ return window.screen.width / window.screen.height; }, full: 1 },
@@ -34,7 +35,7 @@
     var raindrops;
     var brickCollisionGroup;
     var rainCollisionGroup;
-    var groundCollisionGroup;
+    var baseCollisionGroup;
     var mouseBody;
     var mouseConstraint;
     var startButton;
@@ -118,7 +119,7 @@
 		game.load.image('rainbutton', 'assets/rainbutton.png');
 		game.load.image('raindrop', 'assets/raindrop.png');
 		game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
-		game.load.image('ground', 'assets/platform.png');
+		game.load.image('base', 'assets/platform.png');
 		game.load.image('startbutton', 'assets/startbutton.png');
 		game.load.image('wise_man_bg', 'assets/backgrounds/wise_man_BG_prelim.jpg');
 		game.load.image('material1', 'assets/building/wisemanhouse_leftroof_prelim.png');
@@ -127,6 +128,8 @@
 		game.load.image('material4', 'assets/building/wisemanhouse_doorpanel_prelim.jpg');
 		game.load.image('nextbutton', 'assets/nextbutton.png');
 		game.load.image('morebutton', 'assets/morebutton.png');
+		game.load.physics('physicsData', 'assets/physics/materials.json');
+		game.load.image('tetrisblock1', 'assets/tetrisblock1.png');
             },
             create: function() {
                 var size, pos, spr;
@@ -268,6 +271,12 @@
 		// James' button
 		instructionText = game.add.text(game.world.width/4, game.world.height/4, 'Welcome to the Parable\nof the Wise and Foolish Builders!', { fontSize: '32px', fill: '#FFF', align: "center" });
 		startButton = game.add.button(game.world.width/4, game.world.height*3/4, 'startbutton', startGame, this);
+
+		// Gather objects we wish to destroy later
+		cur_objects.door = door;
+		cur_objects.side = side;
+		cur_objects.arrow = arrow;
+		cur_objects.startButton = startButton;
 		
             },
             update: function() {
@@ -349,6 +358,12 @@
 
     // James' functions
     function startGame() {
+
+	// Destroy all of Josh's stuff
+	for (var object in cur_objects) {
+	    cur_objects[object].destroy();
+	}
+	
 	inJames = true;
 	instructionText.visible = false;
 	startButton.visible = false;
@@ -368,7 +383,7 @@
 	// don't happen.
 	brickCollisionGroup = game.physics.p2.createCollisionGroup();
 	rainCollisionGroup = game.physics.p2.createCollisionGroup();
-	groundCollisionGroup = game.physics.p2.createCollisionGroup();
+	baseCollisionGroup = game.physics.p2.createCollisionGroup();
 
 	//  This part is vital if you want the objects with their own collision groups to still collide with the world bounds
 	//  (which we do) - what this does is adjust the bounds to use its own collision group.
@@ -377,17 +392,26 @@
 	// Allow collision events
 	game.physics.p2.setImpactEvents(true);
 
-	// FYI: Platform is roughly from (100, 1295) to (1100, 1295)
-        var platform = { x: 200, y: 1280, width: 800, height: 20 };
-        // adjust for background position
-        platform.y += (global.sky.height - 1536) / 2;
-        var groundBitmap = game.add.bitmapData(2048, 1);
-        groundBitmap.fill(0x00, 0x99, 0xCC, 1);
-        var ground = game.add.sprite(0 + groundBitmap.width/2, platform.y + groundBitmap.height/2, groundBitmap);
-	game.physics.p2.enable(ground);
-	ground.body.static = true;
-	ground.body.setCollisionGroup(groundCollisionGroup);
-	ground.body.collides([brickCollisionGroup, rainCollisionGroup]);
+	// // FYI: Platform is roughly from (100, 1295) to (1100, 1295)
+        // var platform = { x: 200, y: 1280, width: 800, height: 20 };
+        // // adjust for background position
+        // platform.y += (global.sky.height - 1536) / 2;
+        // var baseBitmap = game.add.bitmapData(2048, 1);
+        // baseBitmap.fill(0x00, 0x99, 0xCC, 1);
+        // var base = game.add.sprite(0 + baseBitmap.width/2, platform.y + baseBitmap.height/2, baseBitmap);
+	// game.physics.p2.enable(base);
+	// base.body.static = true;
+	// base.body.setCollisionGroup(baseCollisionGroup);
+	// base.body.collides([brickCollisionGroup, rainCollisionGroup]);
+
+	var base = game.add.sprite(0, game.world.height*7/10, 'base');
+	// Ground sprite is 200 pixels wide, we want it to be 3/4 of the screen long
+	var baseLength = 200;
+	base.scale.setTo((3*game.world.width)/(4*baseLength), 1);
+	game.physics.p2.enable(base);
+	base.body.static = true;
+	base.body.setCollisionGroup(baseCollisionGroup);
+	base.body.collides([brickCollisionGroup, rainCollisionGroup]);
 
 	// Create a selection bar on the right of building blocks
 	// Two buttons at the bottom
@@ -428,7 +452,7 @@
 	    game.physics.p2.enable(drop);
 	    drop.animations.add('splash', [0, 1, 2, 3], 10, false);
     	    drop.body.setCollisionGroup(rainCollisionGroup);
-    	    drop.body.collides([brickCollisionGroup, groundCollisionGroup], splash, this);
+    	    drop.body.collides([brickCollisionGroup, baseCollisionGroup], splash, this);
 	    drop.kill();
 	}
 	game.time.events.add(Phaser.Timer.SECOND * 1, dropRain, this);
@@ -452,7 +476,7 @@
 	game.time.events.add(Phaser.Timer.SECOND * delay, dropRain, this);
     }
 
-    function splash(raindrop, ground, shape1, shape2) {
+    function splash(raindrop, base, shape1, shape2) {
 	raindrop.sprite.animations.play('splash', 15, false, true);
     }
 
@@ -511,9 +535,13 @@
 
     function spawnMaterial() {
 	var brick = this.name;
-	var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, brick);
-	brickSprite.name = brick;
-	brickSprite.scale.setTo(0.25, 0.25);
+	//var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, brick);
+	// var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, 'tetrisblock1');
+	var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, 'material1');
+	//brickSprite.name = brick;
+	// brickSprite.name = 'tetrisblock1';
+	brickSprite.name = 'material1';
+	//brickSprite.scale.setTo(0.25, 0.25);
 	brickSprite.inputEnabled = true;
 	brickSprite.input.useHandCursor = true;
 	// Doesn't work with p2, we have to enable drag in a different way
@@ -521,8 +549,10 @@
 	game.physics.p2.enable(brickSprite);
 	// Unnecessary, since this is what it does by default
 	//brickSprite.body.setRectangleFromSprite();
+	brickSprite.body.clearShapes();
+	brickSprite.body.loadPolygon('physicsData', brickSprite.name);
 	brickSprite.body.setCollisionGroup(brickCollisionGroup);
-	brickSprite.body.collides([brickCollisionGroup, groundCollisionGroup, rainCollisionGroup]);
+	brickSprite.body.collides([brickCollisionGroup, baseCollisionGroup, rainCollisionGroup]);
 	// Don't allow rotation
 	brickSprite.body.fixedRotation = true;
 	pickUpBody(brickSprite.body, game.input.activePointer);
