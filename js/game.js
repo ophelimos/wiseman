@@ -535,12 +535,9 @@
 
     function spawnMaterial() {
 	var brick = this.name;
-	//var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, brick);
-	// var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, 'tetrisblock1');
-	var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, 'material1');
-	//brickSprite.name = brick;
-	// brickSprite.name = 'tetrisblock1';
-	brickSprite.name = 'material1';
+	var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, brick);
+	brickSprite.name = brick;
+	// The physics body will not scale with the sprite, so scaling is not useful with physics data
 	//brickSprite.scale.setTo(0.25, 0.25);
 	brickSprite.inputEnabled = true;
 	brickSprite.input.useHandCursor = true;
@@ -549,8 +546,10 @@
 	game.physics.p2.enable(brickSprite);
 	// Unnecessary, since this is what it does by default
 	//brickSprite.body.setRectangleFromSprite();
-	brickSprite.body.clearShapes();
-	brickSprite.body.loadPolygon('physicsData', brickSprite.name);
+	if ( brickSprite.name == "material1" || brickSprite.name == "material2" ) {
+	    brickSprite.body.clearShapes();
+	    brickSprite.body.loadPolygon('physicsData', brickSprite.name);
+	}
 	brickSprite.body.setCollisionGroup(brickCollisionGroup);
 	brickSprite.body.collides([brickCollisionGroup, baseCollisionGroup, rainCollisionGroup]);
 	// Don't allow rotation

@@ -1,19 +1,4 @@
 { 
-    "tetrisblock1": [
-	
-	{
-	    "density": 2, "friction": 0, "bounce": 0, 
-	    "filter": { "categoryBits": 1, "maskBits": 65535 },
-	    "shape": [   48, 0  ,  96, 0  ,  96, 144  ,  48, 144  ]
-	}  ,
-	{
-	    "density": 2, "friction": 0, "bounce": 0, 
-	    "filter": { "categoryBits": 1, "maskBits": 65535 },
-	    "shape": [   0, 48  ,  48, 48  ,  48, 96  ,  0, 96  ]
-	}  
-    ]
-    
-    ,
     "material1": [
 	
 	{
@@ -22,5 +7,13 @@
 	    "shape": [   156, 281  ,  156, 91  ,  495, 91  ,  495, 281 ]	    
 	}
     ]
-    
+    ,
+    "material2": [
+	
+	{
+	    "density": 2, "friction": 0, "bounce": 0, 
+	    "filter": { "categoryBits": 1, "maskBits": 65535 },
+	    "shape": [   0, 286  ,  0, 87  ,  335, 87  ,  335, 286 ]	    
+	}
+    ]
 }
