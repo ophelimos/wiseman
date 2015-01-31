@@ -194,15 +194,17 @@
                 var side = spr;
                 
                 pos.x -= 800;
-                pos.y -= 570;
-                spr = game.add.sprite(pos.x, pos.y, 'wise_leftroof');
+                pos.y -= 590;
+                size = game.cache.getFrame('wise_leftroof');
+                spr = game.add.sprite(pos.x+size.width/2, pos.y+size.height/2, 'wise_leftroof');
                 game.physics.p2.enable(spr);
-                scene.push([spr, spr.body.x, spr.body.y, spr.body.angle]);
                 spr.body.clearShapes();
-                var error = -80;
-                spr.body.addPolygon({ skipSimpleCheck: 1 }, [80+error,283, 495+error,282, 495+error,60, 80+error,230]);
+                var xerror = -size.width/2, yerror = -size.height/2;
+                spr.body.addPolygon({ skipSimpleCheck: 1 }, [160+xerror,282+yerror, 495+xerror,282+yerror, 495+xerror,60+yerror, 160+xerror,250+yerror]);
                 spr.body.debug = true;
+                scene.push([spr, spr.body.x, spr.body.y, spr.body.angle]);
                 var roofLeft = spr;
+                global.roof = roofLeft;
 
                 lock(door, ground, 10);
                 lock(side, ground, 10);
@@ -257,7 +259,7 @@
                 game.physics.p2.enable(spr);
                 arrow = spr.body;
                 arrow.clearShapes();
-                arrow.addPolygon({ skipSimpleCheck: 1 }, [ 1,25, 31,0, 29,15, 49,15, 49,35, 29,35, 31,50 ].map(function(x){return 2*x}));
+                arrow.addPolygon({ skipSimpleCheck: 1 }, [ 1,25, 31,0, 29,15, 49,15, 49,35, 29,35, 31,50 ].map(function(x){return 2*x - spr.width/2}));
                 arrow.angularVelocity = Math.random()*20 - 10;
                 arrow.mass = 15;
                 arrow.motionState = Phaser.Physics.P2.Body.STATIC;
