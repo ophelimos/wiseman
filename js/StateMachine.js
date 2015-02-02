@@ -1,6 +1,6 @@
-(function(){
+define(['lodash'],
+function(_) {
     "use strict";
-    var global = window;
 
     var NULL_STATE_NAME = null;
     var NULL_STATE_OBJECT = {};
@@ -118,5 +118,5 @@
         });
     };
 
-    global.StateMachine = StateMachine;
-})();
+    return StateMachine;
+});

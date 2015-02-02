@@ -1,4 +1,5 @@
-(function(){
+define(['lodash', 'phaser', 'Layout', 'StateMachine'],
+function(_, Phaser, Layout, StateMachine){
     "use strict";
 
     var global = window;
@@ -21,12 +22,7 @@
     };
 
     // position an axis-aligned box relative to another axis-aligned box
-    var alignBox = function(ref, refAlign, obj, objAlign) {
-        var box = obj ? { x: obj.width * objAlign.x, y: obj.height * objAlign.y, width: obj.width, height: obj.height } : { x: 0, y: 0 };
-        box.x = ref.x + (ref.width * refAlign.x - box.x) / 100;
-        box.y = ref.y + (ref.height * refAlign.y - box.y) / 100;
-        return box;
-    };
+    var alignBox = Layout.alignBox;
 
     // James' globals
     var inJames = false;
@@ -103,6 +99,7 @@
         if (ratio < 4/3) ratio = 4/3;
         if (ratio > 16/9) ratio = 16/9;
         var width = 2048, height = width / ratio;
+        Layout.bounds = { x:0, y:0, width:width, height:height };
 
         var arrow, target, device;
         var scene = [];
@@ -571,4 +568,4 @@
         pickUpBody(brickSprite.body, game.input.activePointer);
     }
     
-})();
+});
