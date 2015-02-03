@@ -1,4 +1,5 @@
-(function(){
+define(['lodash', 'phaser', 'Layout', 'StateMachine'],
+function(_, Phaser, Layout, StateMachine){
     "use strict";
 
     var global = window;
@@ -21,12 +22,7 @@
     };
 
     // position an axis-aligned box relative to another axis-aligned box
-    var alignBox = function(ref, refAlign, obj, objAlign) {
-        var box = obj ? { x: obj.width * objAlign.x, y: obj.height * objAlign.y, width: obj.width, height: obj.height } : { x: 0, y: 0 };
-        box.x = ref.x + (ref.width * refAlign.x - box.x) / 100;
-        box.y = ref.y + (ref.height * refAlign.y - box.y) / 100;
-        return box;
-    };
+    var alignBox = Layout.alignBox;
 
     // James' globals
     var inJames = false;
@@ -103,6 +99,7 @@
         if (ratio < 4/3) ratio = 4/3;
         if (ratio > 16/9) ratio = 16/9;
         var width = 2048, height = width / ratio;
+        Layout.bounds = { x:0, y:0, width:width, height:height };
 
         var arrow, target, device;
         var scene = [];
@@ -112,24 +109,24 @@
                 game.load.image('bg', 'assets/bg_' + screenModes[screenMode].background + '.jpg');
                 game.load.image('arrow', 'assets/arrow.png');
                 game.load.spritesheet('planks', 'assets/planks.jpg', 90, 600);
-		game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
+                game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
                 _.forOwn(parts, function(file, key) {
                     game.load.image(key, 'assets/building/' + file);
                 });
-		game.load.image('rainbutton', 'assets/rainbutton.png');
-		game.load.image('raindrop', 'assets/raindrop.png');
-		game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
-		game.load.image('base', 'assets/platform.png');
-		game.load.image('startbutton', 'assets/startbutton.png');
-		game.load.image('wise_man_bg', 'assets/backgrounds/wise_man_BG_prelim.jpg');
-		game.load.image('material1', 'assets/building/wisemanhouse_leftroof_prelim.png');
-		game.load.image('material2', 'assets/building/wisemanhouse_rightroof_prelim.png');
-		game.load.image('material3', 'assets/building/wisemanhouse_plank_previs.jpg');
-		game.load.image('material4', 'assets/building/wisemanhouse_doorpanel_prelim.jpg');
-		game.load.image('nextbutton', 'assets/nextbutton.png');
-		game.load.image('morebutton', 'assets/morebutton.png');
-		game.load.physics('physicsData', 'assets/physics/materials.json');
-		game.load.image('tetrisblock1', 'assets/tetrisblock1.png');
+                game.load.image('rainbutton', 'assets/rainbutton.png');
+                game.load.image('raindrop', 'assets/raindrop.png');
+                game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
+                game.load.image('base', 'assets/platform.png');
+                game.load.image('startbutton', 'assets/startbutton.png');
+                game.load.image('wise_man_bg', 'assets/backgrounds/wise_man_BG_prelim.jpg');
+                game.load.image('material1', 'assets/building/wisemanhouse_leftroof_prelim.png');
+                game.load.image('material2', 'assets/building/wisemanhouse_rightroof_prelim.png');
+                game.load.image('material3', 'assets/building/wisemanhouse_plank_previs.jpg');
+                game.load.image('material4', 'assets/building/wisemanhouse_doorpanel_prelim.jpg');
+                game.load.image('nextbutton', 'assets/nextbutton.png');
+                game.load.image('morebutton', 'assets/morebutton.png');
+                game.load.physics('physicsData', 'assets/physics/materials.json');
+                game.load.image('tetrisblock1', 'assets/tetrisblock1.png');
             },
             create: function() {
                 var size, pos, spr;
@@ -192,10 +189,24 @@
                 game.physics.p2.enable(spr);
                 scene.push([spr, spr.body.x, spr.body.y, spr.body.angle]);
                 var side = spr;
+                
+                pos.x -= 800;
+                pos.y -= 590;
+                size = game.cache.getFrame('wise_leftroof');
+                spr = game.add.sprite(pos.x+size.width/2, pos.y+size.height/2, 'wise_leftroof');
+                game.physics.p2.enable(spr);
+                spr.body.clearShapes();
+                var xerror = -size.width/2, yerror = -size.height/2;
+                spr.body.addPolygon({ skipSimpleCheck: 1 }, [160+xerror,282+yerror, 495+xerror,282+yerror, 495+xerror,60+yerror, 160+xerror,250+yerror]);
+                spr.body.debug = true;
+                scene.push([spr, spr.body.x, spr.body.y, spr.body.angle]);
+                var roofLeft = spr;
+                global.roof = roofLeft;
 
                 lock(door, ground, 10);
                 lock(side, ground, 10);
                 lock(door, side, 5);
+                lock(roofLeft, door, 5);
 
                 /*
                 // planky
@@ -245,7 +256,7 @@
                 game.physics.p2.enable(spr);
                 arrow = spr.body;
                 arrow.clearShapes();
-                arrow.addPolygon({ skipSimpleCheck: 1 }, [ 1,25, 31,0, 29,15, 49,15, 49,35, 29,35, 31,50 ].map(function(x){return 2*x}));
+                arrow.addPolygon({ skipSimpleCheck: 1 }, [ 1,25, 31,0, 29,15, 49,15, 49,35, 29,35, 31,50 ].map(function(x){return 2*x - spr.width/2}));
                 arrow.angularVelocity = Math.random()*20 - 10;
                 arrow.mass = 15;
                 arrow.motionState = Phaser.Physics.P2.Body.STATIC;
@@ -268,21 +279,21 @@
                     }
                 });
 
-		// James' button
-		instructionText = game.add.text(game.world.width/4, game.world.height/4, 'Welcome to the Parable\nof the Wise and Foolish Builders!', { fontSize: '32px', fill: '#FFF', align: "center" });
-		startButton = game.add.button(game.world.width/4, game.world.height*3/4, 'startbutton', startGame, this);
+                // James' button
+                instructionText = game.add.text(game.world.width/4, game.world.height/4, 'Welcome to the Parable\nof the Wise and Foolish Builders!', { fontSize: '32px', fill: '#FFF', align: "center" });
+                startButton = game.add.button(game.world.width/4, game.world.height*3/4, 'startbutton', startGame, this);
 
-		// Gather objects we wish to destroy later
-		cur_objects.door = door;
-		cur_objects.side = side;
-		cur_objects.arrow = arrow;
-		cur_objects.startButton = startButton;
-		
+                // Gather objects we wish to destroy later
+                cur_objects.door = door;
+                cur_objects.side = side;
+                cur_objects.arrow = arrow;
+                cur_objects.startButton = startButton;
+
             },
             update: function() {
-		if (inJames) {
-		    return;
-		}
+                if (inJames) {
+                    return;
+                }
                 var angle = (game.input.y * -75/height) + 60;
                 if (arrow.static) {
                     arrow.angle = angle;
@@ -350,7 +361,7 @@
             document.removeEventListener('readystatechange', onComplete);
             document.body.className = "prestart";
             // Phaser.Device.whenReady(setUpPrestart);
-	    setUpPrestart(Phaser.Device);
+            setUpPrestart(Phaser.Device);
         }
     };
     document.addEventListener("readystatechange", onComplete);
@@ -378,159 +389,159 @@
     
     // Create the wiseman building stage
     function create_wiseman_build() {
-	var pos = alignBox(game.camera.view, { x: 50, y: 50 }, global.sky, { x: 50, y: 50 });
-	var background = game.add.image(pos.x, pos.y, 'wise_man_bg');
-	background.width = global.sky.width;
-	background.height = global.sky.height;
-	
-	// P2 Physics already enabled by Josh's code
-	// Collisions must be two-way: each collision group must be set to
-	// collide with all other collision groups.  One-way collisions
-	// don't happen.
-	brickCollisionGroup = game.physics.p2.createCollisionGroup();
-	rainCollisionGroup = game.physics.p2.createCollisionGroup();
-	baseCollisionGroup = game.physics.p2.createCollisionGroup();
+        var pos = alignBox(game.camera.view, { x: 50, y: 50 }, global.sky, { x: 50, y: 50 });
+        var background = game.add.image(pos.x, pos.y, 'wise_man_bg');
+        background.width = global.sky.width;
+        background.height = global.sky.height;
+        
+        // P2 Physics already enabled by Josh's code
+        // Collisions must be two-way: each collision group must be set to
+        // collide with all other collision groups.  One-way collisions
+        // don't happen.
+        brickCollisionGroup = game.physics.p2.createCollisionGroup();
+        rainCollisionGroup = game.physics.p2.createCollisionGroup();
+        baseCollisionGroup = game.physics.p2.createCollisionGroup();
 
-	//  This part is vital if you want the objects with their own collision groups to still collide with the world bounds
-	//  (which we do) - what this does is adjust the bounds to use its own collision group.
-	game.physics.p2.updateBoundsCollisionGroup();
+        //  This part is vital if you want the objects with their own collision groups to still collide with the world bounds
+        //  (which we do) - what this does is adjust the bounds to use its own collision group.
+        game.physics.p2.updateBoundsCollisionGroup();
 
-	// Allow collision events
-	game.physics.p2.setImpactEvents(true);
+        // Allow collision events
+        game.physics.p2.setImpactEvents(true);
 
-	// // FYI: Platform is roughly from (100, 1295) to (1100, 1295)
+        // // FYI: Platform is roughly from (100, 1295) to (1100, 1295)
         // var platform = { x: 200, y: 1280, width: 800, height: 20 };
         // // adjust for background position
         // platform.y += (global.sky.height - 1536) / 2;
         // var baseBitmap = game.add.bitmapData(2048, 1);
         // baseBitmap.fill(0x00, 0x99, 0xCC, 1);
         // var base = game.add.sprite(0 + baseBitmap.width/2, platform.y + baseBitmap.height/2, baseBitmap);
-	// game.physics.p2.enable(base);
-	// base.body.static = true;
-	// base.body.setCollisionGroup(baseCollisionGroup);
-	// base.body.collides([brickCollisionGroup, rainCollisionGroup]);
+        // game.physics.p2.enable(base);
+        // base.body.static = true;
+        // base.body.setCollisionGroup(baseCollisionGroup);
+        // base.body.collides([brickCollisionGroup, rainCollisionGroup]);
 
-	var base = game.add.sprite(0, game.world.height*7/10, 'base');
-	// Ground sprite is 200 pixels wide, we want it to be 3/4 of the screen long
-	var baseLength = 200;
-	base.scale.setTo((3*game.world.width)/(4*baseLength), 1);
-	game.physics.p2.enable(base);
-	base.body.static = true;
-	base.body.setCollisionGroup(baseCollisionGroup);
-	base.body.collides([brickCollisionGroup, rainCollisionGroup]);
+        var base = game.add.sprite(0, game.world.height*7/10, 'base');
+        // Ground sprite is 200 pixels wide, we want it to be 3/4 of the screen long
+        var baseLength = 200;
+        base.scale.setTo((3*game.world.width)/(4*baseLength), 1);
+        game.physics.p2.enable(base);
+        base.body.static = true;
+        base.body.setCollisionGroup(baseCollisionGroup);
+        base.body.collides([brickCollisionGroup, rainCollisionGroup]);
 
-	// Create a selection bar on the right of building blocks
-	// Two buttons at the bottom
-	var moreButton = game.add.button(game.world.width-(71*2), game.world.height*5/6, 'morebutton', getMore, this);    
-	var nextButton = game.add.button(game.world.width-71, game.world.height*5/6, 'nextbutton', goNext, this);
-	// Sprites for the actual materials
-	for (var i = 1; i <= 4; i++) {
-    	    var material = "material" + i;
-    	    var materialSprite = game.add.sprite(game.world.width-(72*2), game.world.height*5/6-100*i, material);
-    	    materialSprite.name = material;
-    	    materialSprite.scale.setTo(0.15, 0.15);
-	    materialSprite.inputEnabled = true;
-	    materialSprite.events.onInputDown.add(spawnMaterial, materialSprite);
-	}
+        // Create a selection bar on the right of building blocks
+        // Two buttons at the bottom
+        var moreButton = game.add.button(game.world.width-(71*2), game.world.height*5/6, 'morebutton', getMore, this);    
+        var nextButton = game.add.button(game.world.width-71, game.world.height*5/6, 'nextbutton', goNext, this);
+        // Sprites for the actual materials
+        for (var i = 1; i <= 4; i++) {
+                var material = "material" + i;
+                var materialSprite = game.add.sprite(game.world.width-(72*2), game.world.height*5/6-100*i, material);
+                materialSprite.name = material;
+                materialSprite.scale.setTo(0.15, 0.15);
+            materialSprite.inputEnabled = true;
+            materialSprite.events.onInputDown.add(spawnMaterial, materialSprite);
+        }
 
-	// We don't actually create bricks until they click on one to create
-	bricks = game.add.group(game.world, "bricks", false, true, Phaser.Physics.P2);
-	
-	raindrops = game.add.group(game.world, "raindrops", false, true, Phaser.Physics.P2);
-	
-	var rainButton = game.add.button(game.world.width/4, game.world.height*3/4, 'rainbutton', makeItRain, this);
+        // We don't actually create bricks until they click on one to create
+        bricks = game.add.group(game.world, "bricks", false, true, Phaser.Physics.P2);
+        
+        raindrops = game.add.group(game.world, "raindrops", false, true, Phaser.Physics.P2);
+        
+        var rainButton = game.add.button(game.world.width/4, game.world.height*3/4, 'rainbutton', makeItRain, this);
 
-	// create physics body for mouse which we will use for dragging clicked bodies
-	mouseBody = new p2.Body();
-	game.physics.p2.world.addBody(mouseBody);
-	
-	// attach pointer events for dragging
-	game.input.onDown.add(click, this);
-	game.input.onUp.add(release, this);
-	game.input.addMoveCallback(move, this);
+        // create physics body for mouse which we will use for dragging clicked bodies
+        mouseBody = new p2.Body();
+        game.physics.p2.world.addBody(mouseBody);
+        
+        // attach pointer events for dragging
+        game.input.onDown.add(click, this);
+        game.input.onUp.add(release, this);
+        game.input.addMoveCallback(move, this);
     }
 
     function makeItRain() {
-	instructionText.setText("Now raining");
-	// Create some raindrops
-	for (var i = 0; i < 100; i++) {
-	    var drop = raindrops.create(0, 0, "raindrops");
-	    game.physics.p2.enable(drop);
-	    drop.animations.add('splash', [0, 1, 2, 3], 10, false);
-    	    drop.body.setCollisionGroup(rainCollisionGroup);
-    	    drop.body.collides([brickCollisionGroup, baseCollisionGroup], splash, this);
-	    drop.kill();
-	}
-	game.time.events.add(Phaser.Timer.SECOND * 1, dropRain, this);
+        instructionText.setText("Now raining");
+        // Create some raindrops
+        for (var i = 0; i < 100; i++) {
+            var drop = raindrops.create(0, 0, "raindrops");
+            game.physics.p2.enable(drop);
+            drop.animations.add('splash', [0, 1, 2, 3], 10, false);
+                drop.body.setCollisionGroup(rainCollisionGroup);
+                drop.body.collides([brickCollisionGroup, baseCollisionGroup], splash, this);
+            drop.kill();
+        }
+        game.time.events.add(Phaser.Timer.SECOND * 1, dropRain, this);
     }
 
     function dropRain() {
-	// Find a raindrop and drop it
-	var drop = raindrops.getFirstDead();
-	if (drop != null) {	
-	    drop.body.x = game.rnd.integerInRange(0, 100)*game.world.width/100;
-	    drop.body.y = 0;
-	    drop.revive();
-	    drop.frame = 0;
-	}
-	var varx = game.rnd.realInRange(0, 1);
-	if (varx == 0) {
-	    varx = 0.000001;
-	}
-	var delay = varx;
-	//instructionText.setText("Delay = " + delay);
-	game.time.events.add(Phaser.Timer.SECOND * delay, dropRain, this);
+        // Find a raindrop and drop it
+        var drop = raindrops.getFirstDead();
+        if (drop != null) {        
+            drop.body.x = game.rnd.integerInRange(0, 100)*game.world.width/100;
+            drop.body.y = 0;
+            drop.revive();
+            drop.frame = 0;
+        }
+        var varx = game.rnd.realInRange(0, 1);
+        if (varx == 0) {
+            varx = 0.000001;
+        }
+        var delay = varx;
+        //instructionText.setText("Delay = " + delay);
+        game.time.events.add(Phaser.Timer.SECOND * delay, dropRain, this);
     }
 
     function splash(raindrop, base, shape1, shape2) {
-	raindrop.sprite.animations.play('splash', 15, false, true);
+        raindrop.sprite.animations.play('splash', 15, false, true);
     }
 
     function click(pointer) {
-	// Check if we hit a brick
-	var brickbodies = [];
-	for (var ii = 0; ii < bricks.length; ii++) {
-	    var brick = bricks.next();
-	    brickbodies[ii] = brick.body;
-	}
-	
-	var hitbodies = game.physics.p2.hitTest(pointer.position, brickbodies);
-	
-	if (hitbodies.length)
-	{
-	    var clickedBody = hitbodies[0].parent;
-	    pickUpBody(clickedBody, pointer);
-	    return;
-	}
+        // Check if we hit a brick
+        var brickbodies = [];
+        for (var ii = 0; ii < bricks.length; ii++) {
+            var brick = bricks.next();
+            brickbodies[ii] = brick.body;
+        }
+        
+        var hitbodies = game.physics.p2.hitTest(pointer.position, brickbodies);
+        
+        if (hitbodies.length)
+        {
+            var clickedBody = hitbodies[0].parent;
+            pickUpBody(clickedBody, pointer);
+            return;
+        }
     }
 
     function pickUpBody(clickedBody, pointer) {
-	clickedBody.sprite.alive = false;
+        clickedBody.sprite.alive = false;
 
-	// p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
-	var physicsPos = [game.physics.p2.pxmi(pointer.position.x), game.physics.p2.pxmi(pointer.position.y)];
-	var localPointInBody = [0, 0];
-	// this function takes physicsPos and converts it to the body's local coordinate system
-	clickedBody.toLocalFrame(localPointInBody, physicsPos);
-	
-	// use a revoluteContraint to attach mouseBody to the clicked body
-	//mouseConstraint = this.game.physics.p2.createRevoluteConstraint(mouseBody, [0, 0], clickedBody, [game.physics.p2.mpxi(localPointInBody[0]), game.physics.p2.mpxi(localPointInBody[1]) ]);
-	mouseConstraint = global.game.physics.p2.createLockConstraint(mouseBody, clickedBody);
-	
+        // p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
+        var physicsPos = [game.physics.p2.pxmi(pointer.position.x), game.physics.p2.pxmi(pointer.position.y)];
+        var localPointInBody = [0, 0];
+        // this function takes physicsPos and converts it to the body's local coordinate system
+        clickedBody.toLocalFrame(localPointInBody, physicsPos);
+        
+        // use a revoluteContraint to attach mouseBody to the clicked body
+        //mouseConstraint = this.game.physics.p2.createRevoluteConstraint(mouseBody, [0, 0], clickedBody, [game.physics.p2.mpxi(localPointInBody[0]), game.physics.p2.mpxi(localPointInBody[1]) ]);
+        mouseConstraint = global.game.physics.p2.createLockConstraint(mouseBody, clickedBody);
+        
     }
 
     function release() {
-	// remove constraint from object's body
-	if (mouseConstraint != undefined) {
-	    mouseConstraint.bodyB.parent.sprite.alive = true;
-	    game.physics.p2.removeConstraint(mouseConstraint);
-	}
+        // remove constraint from object's body
+        if (mouseConstraint != undefined) {
+            mouseConstraint.bodyB.parent.sprite.alive = true;
+            game.physics.p2.removeConstraint(mouseConstraint);
+        }
     }
 
     function move(pointer) {
-	// p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
-	mouseBody.position[0] = game.physics.p2.pxmi(pointer.position.x);
-	mouseBody.position[1] = game.physics.p2.pxmi(pointer.position.y);
+        // p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
+        mouseBody.position[0] = game.physics.p2.pxmi(pointer.position.x);
+        mouseBody.position[1] = game.physics.p2.pxmi(pointer.position.y);
     }
 
     function goNext() {
@@ -566,4 +577,4 @@
 	brickSprite.body.mass = 1000;
     }
     
-})();
+});
