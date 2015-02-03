@@ -139,7 +139,7 @@
                 game.physics.p2.setBounds(0, 0, width, height, true, true, false, true, false);
                 game.physics.p2.gravity.y = 1000;
                 game.physics.p2.gravity.x = 100;
-                game.physics.p2.restitution = 0.3;
+                game.physics.p2.restitution = 0.8;
                 game.physics.p2.friction = 1.1;
 
                 // scale up the sky to fit as necessary
@@ -363,6 +363,12 @@
 	for (var object in cur_objects) {
 	    cur_objects[object].destroy();
 	}
+
+	// Change physics so that placing objects is pretty easy
+        game.physics.p2.gravity.y = 10000;
+        game.physics.p2.gravity.x = 0;
+        game.physics.p2.restitution = 0.2;
+        game.physics.p2.friction = 10000;
 	
 	inJames = true;
 	instructionText.visible = false;
@@ -555,6 +561,9 @@
 	// Don't allow rotation
 	brickSprite.body.fixedRotation = true;
 	pickUpBody(brickSprite.body, game.input.activePointer);
+	// Try and make these things a little more realistic
+	// brickSprite.body.damping = 0.9;
+	brickSprite.body.mass = 1000;
     }
     
 })();
