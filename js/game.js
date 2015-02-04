@@ -44,7 +44,7 @@ function(_, Phaser, Layout, StateMachine){
         ["rightroof", "wise_rightroof", ["wall", "leftroof"], []]
     ];
     
-    var game;
+    var game, gameState = new StateMachine("gameState", {});
 
     // Lock two bodies together in their current orientation.
     var lock = function(bodyA, bodyB, strength) {
@@ -91,8 +91,9 @@ function(_, Phaser, Layout, StateMachine){
             });
         });
     };
-    
-    var start = function(screenMode) {
+
+    gameState.addState('start', {
+    onEnter: function(prevState, screenMode) {
         document.body.className = "game";
         var ratio = screenModes[screenMode].ratio();
         // Clamp the screen ratio for full-screen with odd resolutions.
@@ -340,32 +341,38 @@ function(_, Phaser, Layout, StateMachine){
         });
 
         // make it globally visible for debugging
-        global.game = game;
-    };
+        gameState.game = game;
+    }
+    });
 
-    var setUpPrestart = function(device) {
-        var handler = function() {
-            start(this.id);
-            if (this.id.substr(-11) === 'full_screen')
-                document.body[device.requestFullscreen]();
-            for (var mode in screenModes)
-                document.getElementById(mode).removeEventListener('click', handler);
-        };
-        for (var mode in screenModes)
-            document.getElementById(mode).addEventListener('click', handler);
-    };
+    gameState.addState('resolution-select', {
+    onEnter: function() {
+            var setUpPrestart = function(device) {
+                var handler = function() {
+                    if (this.id.substr(-11) === 'full_screen')
+                        document.body[device.requestFullscreen]();
+                    for (var mode in screenModes)
+                        document.getElementById(mode).removeEventListener('click', handler);
+                    gameState.to('start', this.id);
+                };
+                for (var mode in screenModes)
+                    document.getElementById(mode).addEventListener('click', handler);
+                document.removeEventListener("readystatechange", onComplete);
+            };
 
-    // When the browser is done loading everything, take down the static loading text and get ready to start the game.
-    var onComplete = function() {
-        if (document.readyState === 'complete') {
-            document.removeEventListener('readystatechange', onComplete);
-            document.body.className = "prestart";
-            // Phaser.Device.whenReady(setUpPrestart);
-            setUpPrestart(Phaser.Device);
+            // When the browser is done loading everything, take down the static loading text and get ready to start the game.
+            var onComplete = function() {
+                if (document.readyState === 'complete') {
+                    document.removeEventListener('readystatechange', onComplete);
+                    document.body.className = "prestart";
+                    // Phaser.Device.whenReady(setUpPrestart);
+                    setUpPrestart(Phaser.Device);
+                }
+            };
+            document.addEventListener("readystatechange", onComplete);
+            onComplete();
         }
-    };
-    document.addEventListener("readystatechange", onComplete);
-    onComplete();
+    });
 
     // James' functions
     function startGame() {
@@ -576,5 +583,6 @@ function(_, Phaser, Layout, StateMachine){
 	// brickSprite.body.damping = 0.9;
 	brickSprite.body.mass = 1000;
     }
-    
+
+    return gameState;
 });

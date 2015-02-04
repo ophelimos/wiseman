@@ -17,6 +17,9 @@
         },
     });
 
-    require(['game']);
+    require(['game'],
+    function(gameState) {
+        gameState.to('resolution-select');
+    });
 
 })();
