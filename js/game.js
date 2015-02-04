@@ -110,7 +110,6 @@ function(_, Phaser, Layout, StateMachine){
                 game.load.image('bg', 'assets/bg_' + screenModes[screenMode].background + '.jpg');
                 game.load.image('arrow', 'assets/arrow.png');
                 game.load.spritesheet('planks', 'assets/planks.jpg', 90, 600);
-                game.load.spritesheet('raindrops', 'assets/raindrops.png', 15, 25);
                 _.forOwn(parts, function(file, key) {
                     game.load.image(key, 'assets/building/' + file);
                 });
