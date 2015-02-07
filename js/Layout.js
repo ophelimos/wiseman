@@ -4,11 +4,36 @@ function(_, Placeholder) {
 
     var Layout = function(){};
 
+    // ##.#% + ##px
+    var positionRegex = /^\s*(?:(\d+(?:[.]\d+)?)\s*%)?\s*(?:([+-]?)\s*(\d+)\s?px)?\s*$/;
+
+    Layout.decodePosition = function(zero, size, position) {
+        var percent = 0, sign = '', pixels = 0;
+        if (typeof position === 'string') {
+            var matches = position.match(positionRegex);
+            // This will throw an exception if the syntax is wrong.
+            // Don't get the syntax wrong.
+            percent = matches[1] - 0 || 0;
+            sign    = matches[2];
+            pixels  = matches[3] - 0 || 0;
+            if (sign === '-')
+                pixels = -pixels;
+        } else {
+            percent = position;
+        }
+        return zero + size * percent / 100 + pixels;
+    };
+
     // position an axis-aligned box relative to another axis-aligned box
     Layout.alignBox = function(ref, refAlign, obj, objAlign) {
-        var box = obj ? { x: obj.width * objAlign.x, y: obj.height * objAlign.y, width: obj.width, height: obj.height } : { x: 0, y: 0 };
-        box.x = ref.x + (ref.width * refAlign.x - box.x) / 100;
-        box.y = ref.y + (ref.height * refAlign.y - box.y) / 100;
+        var box = obj
+            ? { x: Layout.decodePosition(0, obj.width,  objAlign.x),
+                y: Layout.decodePosition(0, obj.height, objAlign.y),
+                width:  obj.width,
+                height: obj.height }
+            : { x: 0, y: 0 };
+        box.x = Layout.decodePosition(ref.x, ref.width,  refAlign.x) - box.x;
+        box.y = Layout.decodePosition(ref.y, ref.height, refAlign.y) - box.y;
         return box;
     };
 
