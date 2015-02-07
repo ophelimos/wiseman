@@ -91,8 +91,149 @@ function(_, Phaser, Layout, StateMachine){
             });
         });
     };
+    
+    var buttonStyles = {
+    // [key, overFrame, outFrame, downFrame, upFrame, textStyle]
+        mainMenu: ['menubtn', 1, 0, 2, 3, { }],
+    };
 
+    global.state = gameState;
     gameState.addState('start', {
+        onEnter: function(prevState, screenMode) {
+            document.body.className = "game";
+            var ratio = screenModes[screenMode].ratio();
+            // Clamp the screen ratio for full-screen with odd resolutions.
+            if (ratio < 4/3) ratio = 4/3;
+            if (ratio > 16/9) ratio = 16/9;
+            var width = 2048, height = width / ratio;
+            game = new Phaser.Game(width, height, Phaser.AUTO, 'container', {
+                preload: function() {
+                    game.load.image('menubg', 'assets/backgrounds/sea-361802_1920.jpg');
+                    game.load.spritesheet('menubtn', 'assets/menu/button.png', 600, 100);
+                    gameState.invokeAll('onPreloadGame', game);
+                },
+                create: function() {
+                    // scale input to use canvas pixels rather than screen pixels
+                    game.scale.scaleMode = Phaser.ScaleManager.EXACT_FIT;
+
+                    global.game = game;
+                    Layout.world = game.world;
+                    // We can't always create things at the right position because some things don't have a size until they are created.
+                    // So create in three phases: construct at 0,0; move into position; add to group/world.
+                    Layout.context = {
+                        nothing: function(name, group, positioner, width, height) {
+                            var obj = { width: width, height: height };
+                            var pos = positioner(obj);
+                            obj.x = pos.x;
+                            obj.y = pos.y;
+                            return obj;
+                        },
+                        button: function(name, group, positioner, style, text, textAlign, textAnchor) {
+                            if (typeof style === 'string')
+                                style = buttonStyles[style];
+                            var obj = new Phaser.Button(game, 0, 0, style[0],
+                                function(){ gameState.invoke('onButton', name); }, null,
+                                style[1], style[2], style[3], style[4]);
+                            if (text) {
+                                var label = new Phaser.Text(game, 0, 0, text, style[5]);
+                                var pos = Layout.alignBox(obj, textAnchor || { x: 50, y: 50 }, label, textAlign || { x: 50, y: 50 });
+                                label.position.set(pos.x, pos.y);
+                                obj.addChild(label);
+                            }
+                            var pos = positioner(obj);
+                            obj.position.set(pos.x, pos.y);
+                            return group.add(obj, true);
+                        },
+                        group: function(name, group, positioner, width, height) {
+                            var obj = new Phaser.Group(game, null, name);
+                            var pos = positioner({ width: width, height: height });
+                            obj.position.set(pos.x, pos.y);
+                            return group.add(group, true);
+                        },
+                        image: function(name, group, positioner, key, frame) {
+                            var obj = new Phaser.Image(game, 0, 0, key, frame);
+                            var pos = positioner(obj);
+                            obj.position.set(pos.x, pos.y);
+                            return group.add(obj, true);
+                        },
+                        solid: function(name, group, positioner, width, height, options) {
+                            var texture = new Phaser.BitmapData(game, "texture_" + name, width, height);
+                            if (options.fill)
+                                texture.fill.apply(texture, options.fill);
+                            return this.sprite(name, group, positioner, texture, undefined, options);
+                        },
+                        sprite: function(name, group, positioner, key, frame, options) {
+                            var obj = new Phaser.Sprite(game, 0, 0, key, frame);
+                            var scale = 1;
+                            if (options.scale) {
+                                scale = options.scale;
+                                obj.width  *= options.scale;
+                                obj.height *= options.scale;
+                            }
+                            if (options.body) {
+                                game.physics.p2.enable(obj);
+                                if (options.body.polygon) {
+                                    obj.body.clearShapes();
+                                    var poly = [], i, n = options.body.polygon.length;
+                                    for (i = 0; i < n; i += 2) {
+                                        var x = options.body.polygon[i+0], y = options.body.polygon[i+1];
+                                        poly.push(scale * x - obj.width/2);
+                                        poly.push(scale * y - obj.height/2);
+                                    }
+                                    obj.body.addPolygon({ skipSimpleCheck: 1 }, poly);
+                                }
+                                // Default to static because we probably won't add dynamic objects via layout.
+                                if (options.body.kinematic) {
+                                    // It doesn't move, but it does interact with other physics objects.
+                                    obj.body.motionState = Phaser.Physics.P2.Body.KINEMATIC;
+                                } else if (!options.body.dynamic) {
+                                    // According to the docs you can set body.static/.dynamic to false to change state.
+                                    // In practice, not so much.
+                                    obj.body.motionState = Phaser.Physics.P2.Body.STATIC;
+                                }
+                            }
+                            // TODO: account for rotation
+                            var pos = positioner(obj);
+                            if (options.body) {
+                                obj.position.set(pos.x, pos.y);
+                                obj.body.x = pos.x + obj.width/2;
+                                obj.body.y = pos.y + obj.height/2;
+                            } else {
+                                obj.position.set(pos.x, pos.y);
+                            }
+                            obj.name = name;
+                            return group.add(obj, true);
+                        },
+                        text: function(name, group, positioner, text, style) {
+                            var obj = new Phaser.Text(game, 0, 0, text, style);
+                            var pos = positioner(obj);
+                            obj.position.set(pos.x, pos.y);
+                            return group.add(obj, true);
+                        },
+                    };
+
+                    gameState.invokeAll('onCreateGame', game);
+
+                    var layout = Layout.add([
+                        ['image', 'sky',    ['menubg'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
+                        ['solid', 'shade',  [width, height, { fill: [0,0,0,0.5] }], { x: 0, y: 0 } ],
+                        ['text', 'welcome', ["Welcome to the Parable\nof the Wise and Foolish Builders!",
+                                { font: "bold 36px 'Verdana'", fill: '#FFF', stroke: '#000', strokeThickness: 4, align: 'center' }
+                            ], { x: 50, y: 0 }, { x: 50, y: '50px' } ],
+                        ['button', 'demo1', ['mainMenu', "Testing 1..."], { x: 50, y: 0 }, 'welcome', { x: 50, y: "100%+20px" }],
+                        ['button', 'demo2', ['mainMenu', "Testing 2..."], { x: 50, y: 0 }, 'demo1', { x: 50, y: "100%+20px" }],
+                    ]);
+                    layout.demo1.debug = true;
+                    global.layout = layout;
+                },
+            });
+        },
+        onButton: function(which) {
+            console.log("onButton(%s)", which);
+        },
+    });
+
+    gameState.addState('joshdemo', {
     onEnter: function(prevState, screenMode) {
         document.body.className = "game";
         var ratio = screenModes[screenMode].ratio();
