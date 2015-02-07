@@ -263,7 +263,7 @@ function(_, Phaser, Layout, StateMachine){
                 scene.push([spr, spr.body.x, spr.body.y, spr.body.angle]);
 
                 // scale input to use canvas pixels rather than screen pixels
-                game.input.scale.x = game.input.scale.y = width / game.canvas.offsetWidth;
+                game.scale.scaleMode = Phaser.ScaleManager.EXACT_FIT;
                 
                 game.input.onUp.add(function(){
                     if (arrow.static) {
