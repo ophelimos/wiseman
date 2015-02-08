@@ -18,8 +18,8 @@
     });
 
     require(['game'],
-    function(gameState) {
-        gameState.to('resolution-select');
+    function(logicState) {
+        logicState.to('resolution-select');
     });
 
 })();

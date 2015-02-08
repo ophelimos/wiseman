@@ -44,7 +44,7 @@ function(_, Phaser, Layout, StateMachine){
         ["rightroof", "wise_rightroof", ["wall", "leftroof"], []]
     ];
     
-    var game, gameState = new StateMachine("gameState", {});
+    var game, logicState = new StateMachine("logicState", {});
 
     // Lock two bodies together in their current orientation.
     var lock = function(bodyA, bodyB, strength) {
@@ -97,8 +97,8 @@ function(_, Phaser, Layout, StateMachine){
         mainMenu: ['menubtn', 1, 0, 2, 3, { }],
     };
 
-    global.state = gameState;
-    gameState.addState('start', {
+    global.state = logicState;
+    logicState.addState('start', {
         onEnter: function(prevState, screenMode) {
             document.body.className = "game";
             var ratio = screenModes[screenMode].ratio();
@@ -110,7 +110,7 @@ function(_, Phaser, Layout, StateMachine){
                 preload: function() {
                     game.load.image('menubg', 'assets/backgrounds/sea-361802_1920.jpg');
                     game.load.spritesheet('menubtn', 'assets/menu/button.png', 600, 100);
-                    gameState.invokeAll('onPreloadGame', game);
+                    logicState.invokeAll('onPreloadGame', game);
                 },
                 create: function() {
                     // scale input to use canvas pixels rather than screen pixels
@@ -132,7 +132,7 @@ function(_, Phaser, Layout, StateMachine){
                             if (typeof style === 'string')
                                 style = buttonStyles[style];
                             var obj = new Phaser.Button(game, 0, 0, style[0],
-                                function(){ gameState.invoke('onButton', name); }, null,
+                                function(){ logicState.invoke('onButton', name); }, null,
                                 style[1], style[2], style[3], style[4]);
                             if (text) {
                                 var label = new Phaser.Text(game, 0, 0, text, style[5]);
@@ -212,7 +212,7 @@ function(_, Phaser, Layout, StateMachine){
                         },
                     };
 
-                    gameState.invokeAll('onCreateGame', game);
+                    logicState.invokeAll('onCreateGame', game);
 
                     var layout = Layout.add([
                         ['image', 'sky',    ['menubg'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
@@ -233,7 +233,7 @@ function(_, Phaser, Layout, StateMachine){
         },
     });
 
-    gameState.addState('joshdemo', {
+    logicState.addState('joshdemo', {
     onEnter: function(prevState, screenMode) {
         document.body.className = "game";
         var ratio = screenModes[screenMode].ratio();
@@ -481,11 +481,11 @@ function(_, Phaser, Layout, StateMachine){
         });
 
         // make it globally visible for debugging
-        gameState.game = game;
+        logicState.game = game;
     }
     });
 
-    gameState.addState('resolution-select', {
+    logicState.addState('resolution-select', {
     onEnter: function() {
             var setUpPrestart = function(device) {
                 var handler = function() {
@@ -493,7 +493,7 @@ function(_, Phaser, Layout, StateMachine){
                         document.body[device.requestFullscreen]();
                     for (var mode in screenModes)
                         document.getElementById(mode).removeEventListener('click', handler);
-                    gameState.to('start', this.id);
+                    logicState.to('start', this.id);
                 };
                 for (var mode in screenModes)
                     document.getElementById(mode).addEventListener('click', handler);
@@ -724,5 +724,5 @@ function(_, Phaser, Layout, StateMachine){
 	brickSprite.body.mass = 1000;
     }
 
-    return gameState;
+    return logicState;
 });
