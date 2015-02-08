@@ -86,7 +86,7 @@ function(_, Placeholder) {
             var positioner = function(obj) {
                 return Layout.alignBox(reference, refAlign, obj, objAlign);
             };
-            layoutMap[name] = createFunc.apply(Layout.context, [name, group, positioner].concat(createArgs));
+            layoutMap['^'] = layoutMap[name] = createFunc.apply(Layout.context, [name, group, positioner].concat(createArgs));
         });
         return layoutMap;
     };
