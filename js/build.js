@@ -11,6 +11,46 @@ function(_, Phaser, Layout, StateMachine, logicState){
     var baseCollisionGroup;
     var mouseBody;
     var mouseConstraint;
+    var DRAG_THRESHOLD = 50;
+    var drag = {
+        moveCallbackIndex: -1,
+        object: undefined,
+        delta: { x: 0, y: 0 },
+        start: { x: 0, y: 0 },
+        passedThreshold: false,
+        begin: function(object, x, y) {
+            this.game = object.game;
+            this.moveCallbackIndex = this.game.input.addMoveCallback(this.move, this);
+            this.object = object;
+            this.start.x = object.x || 0;
+            this.start.y = object.y || 0;
+            this.delta.x = x - object.x || 0;
+            this.delta.y = y - object.y || 0;
+            this.passedThreshold = false;
+        },
+        move: function(pointer, x, y, down) {
+            if (this.object) {
+                x = x - this.delta.x;
+                y = y - this.delta.y;
+                if (!this.passedThreshold) {
+                    var d2 = (x-this.start.x)*(x-this.start.x) + (y-this.start.y)*(y-this.start.y);
+                    if (d2 > DRAG_THRESHOLD*DRAG_THRESHOLD)
+                        this.passedThreshold = true;
+                }
+                if (this.passedThreshold) {
+                    this.object.x = x;
+                    this.object.y = y;
+                }
+            }
+        },
+        end: function(x, y) {
+            this.object = undefined;
+            if (this.moveCallbackIndex !== -1) {
+                this.game.input.deleteMoveCallback(this.moveCallbackIndex);
+                this.moveCallbackIndex = -1;
+            }
+        }
+    };
 
     var buttonFont = {
         font: "bold 67px 'Verdana'",
@@ -105,7 +145,6 @@ function(_, Phaser, Layout, StateMachine, logicState){
                     // attach pointer events for dragging
                     logicState.addHandler(game.input, 'onDown');
                     logicState.addHandler(game.input, 'onUp');
-                    game.input.addMoveCallback(state.onMove, state);
                 }
             });
 
@@ -150,45 +189,35 @@ function(_, Phaser, Layout, StateMachine, logicState){
             }
             brickSprite.body.setCollisionGroup(brickCollisionGroup);
             brickSprite.body.collides([brickCollisionGroup, baseCollisionGroup, rainCollisionGroup]);
-            // Don't allow rotation
-            brickSprite.body.fixedRotation = true;
-            pickUpBody(brickSprite.body, game.input.activePointer);
             // Try and make these things a little more realistic
             // brickSprite.body.damping = 0.9;
             brickSprite.body.mass = 1000;
+            // Make sure inertia is sane when physics start to apply.
+            brickSprite.body.inertia = 0;
+
+            drag.begin(brickSprite.body, game.input.activePointer.x, game.input.activePointer.y);
+            drag.object.motionState = Phaser.Physics.P2.Body.STATIC;
         },
-        onDown: function(input, pointer) {
+        onDown: function(input, event) {
             // Check if we hit a brick
             var brickbodies = [];
-            /*
-            for (var ii = 0; ii < bricks.length; ii++) {
-                var brick = bricks.next();
-                brickbodies[ii] = brick.body;
-            }
-            */
             bricks.iterate('exists', true, Phaser.Group.RETURN_NONE, [].push, brickbodies);
             
-            var hitbodies = game.physics.p2.hitTest(pointer.position, brickbodies);
+            var hitbodies = game.physics.p2.hitTest(event.position, brickbodies);
             
             if (hitbodies.length)
             {
-                var clickedBody = hitbodies[0].parent;
-                pickUpBody(clickedBody, pointer);
+                drag.begin(hitbodies[0].parent, event.position.x, event.position.y);
+                drag.object.motionState = Phaser.Physics.P2.Body.STATIC;
             }
         },
-        onUp: function() {
-            // remove constraint from object's body
-            if (mouseConstraint) {
-                mouseConstraint.bodyB.parent.sprite.alive = true;
-                game.physics.p2.removeConstraint(mouseConstraint);
-                mouseConstraint = undefined;
+        onUp: function(input, event) {
+            if (drag.object) {
+                drag.object.motionState = Phaser.Physics.P2.Body.DYNAMIC;
+                drag.object.velocity.mx = drag.object.velocity.my = 0;
+                drag.end(event.position.x, event.position.y);
             }
         },
-        onMove: function(pointer) {
-            // p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
-            mouseBody.position[0] = game.physics.p2.pxmi(pointer.position.x);
-            mouseBody.position[1] = game.physics.p2.pxmi(pointer.position.y);
-        }
     });
 
     logicState.addState('storm', {
