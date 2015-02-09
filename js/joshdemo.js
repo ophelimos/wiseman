@@ -35,6 +35,7 @@ function(_, Phaser, Layout, StateMachine, logicState){
             var scene = [];
             var removedConstraints = [];
 
+            this.game = game;
             game.state.add('joshdemo', {
                 create: function() {
                     // Create or reset the physics system.
@@ -181,7 +182,7 @@ function(_, Phaser, Layout, StateMachine, logicState){
         },
         onEnter: function(prevState, background) {
             this.background = background;
-            game.state.start('joshdemo');
+            this.game.state.start('joshdemo');
         },
     });
 
