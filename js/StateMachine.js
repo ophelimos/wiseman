@@ -101,6 +101,14 @@ function(_) {
         state[ATTACH_METHOD_NAME] && state[ATTACH_METHOD_NAME](this);
     };
 
+    // Add an event handler to an object that invokes the current state.
+    StateMachine.prototype.addHandler = function(object, handlerName) {
+        var self = this;
+        object[handlerName].add(function() {
+            self.invokeWith(handlerName, [object].concat(_.drop(arguments, 0)));
+        });
+    };
+
     // Remove a state from a state machine.
     StateMachine.prototype.removeState = function(stateName) {
         if (DEBUG && stateName === this._currentStateName) {
