@@ -1,5 +1,5 @@
-define(['lodash', 'phaser', 'Layout', 'StateMachine', 'game'],
-function(_, Phaser, Layout, StateMachine, logicState){
+define(['lodash', 'phaser', 'Layout', 'StateMachine', 'game', 'Random'],
+function(_, Phaser, Layout, StateMachine, logicState, Random){
     "use strict";
 
     var global = window;
@@ -11,7 +11,8 @@ function(_, Phaser, Layout, StateMachine, logicState){
     var baseCollisionGroup;
     var mouseBody;
     var mouseConstraint;
-    var DROP_VELOCITY_THRESHOLD = 0.01;
+    var DROP_VELOCITY_THRESHOLD = 0.02;
+    var DROP_COUNT_GEN = Random.poisson(5);
     var DRAG_THRESHOLD = 50;
     var drag = {
         moveCallbackIndex: -1,
@@ -244,7 +245,7 @@ function(_, Phaser, Layout, StateMachine, logicState){
                 });
                 drop.kill();
             }
-            game.time.events.add(Phaser.Timer.SECOND * 1, this.dropRain, this);
+            game.time.events.loop(100, this.dropRain, this);
         },
         dropRain: function() {
             // Kill any stationary drops.
@@ -254,18 +255,19 @@ function(_, Phaser, Layout, StateMachine, logicState){
                 if (speed2 < DROP_VELOCITY_THRESHOLD*DROP_VELOCITY_THRESHOLD)
                     drop.kill();
             });
-            // Find a raindrop and drop it
-            var drop = raindrops.getFirstDead();
-            if (drop) {
-                drop.body.x = game.rnd.integerInRange(0, game.world.width - drop.width);
-                drop.body.y = 0;
-                drop.body.velocity.x = 0;
-                drop.body.velocity.y = -10;
-                drop.revive();
-                drop.frame = 0;
+            var n = DROP_COUNT_GEN();
+            while (n--) {
+                // Find a raindrop and drop it
+                var drop = raindrops.getFirstDead();
+                if (drop) {
+                    drop.body.x = Math.random() * (game.world.width - drop.width);
+                    drop.body.y = Math.random() * -2000;
+                    drop.body.velocity.x = 0;
+                    drop.body.velocity.y = 500 + Math.random() * 2000;
+                    drop.revive();
+                    drop.frame = 0;
+                }
             }
-            var delay = game.rnd.realInRange(1, 250);
-            game.time.events.add(delay, this.dropRain, this);
         },
     });
 

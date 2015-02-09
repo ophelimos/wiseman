@@ -45,4 +45,19 @@
         return Placeholder;
     });
 
+    define('Random', {
+        // Poisson distribution: number of events in an arbitrary fixed interval given an expected average.
+        // http://en.wikipedia.org/wiki/Poisson_distribution#Generating_Poisson-distributed_random_variables
+        poisson: function(expected) {
+            return function() {
+                var x = 0, p = Math.exp(-expected), s = p, u = Math.random();
+                while (u > s) {
+                    x += 1;
+                    p *= expected / x;
+                    s += p;
+                }
+                return x;
+            };
+        },
+    });
 })();

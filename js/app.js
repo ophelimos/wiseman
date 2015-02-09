@@ -13,7 +13,7 @@
             },
         },
         bundles: {
-            'util': ['Placeholder'],
+            'util': ['Placeholder', 'Random'],
         },
     });
 
