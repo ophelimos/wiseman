@@ -17,9 +17,9 @@
         },
     });
 
-    require(['game'],
-    function(gameState) {
-        gameState.to('resolution-select');
+    require(['game', 'joshdemo', 'build'],
+    function(logicState) {
+        logicState.to('resolution-select');
     });
 
 })();

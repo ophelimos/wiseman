@@ -62,6 +62,22 @@ function(_) {
         return this.invokeWith(methodName, _.tail(arguments));
     };
 
+    // Invoke a method on all attached states.
+    StateMachine.prototype.invokeAllWith = function(methodName, argumentList) {
+        var self = this;
+        _.forOwn(self._states, function(state, stateName) {
+            if (DEBUG && self._debug)
+                log(self._name, "%s.%s(%s) %s", stateName, methodName, argumentList.toString(), (state[methodName] ? "" : "ignored"));
+            if (state[methodName])
+                state[methodName].apply(state, argumentList);
+        });
+    };
+
+    // Invoke a method on all attached states.
+    StateMachine.prototype.invokeAll = function(methodName /*, ... */) {
+        return this.invokeAllWith(methodName, _.tail(arguments));
+    };
+
     // Change state, invoking onLeave and onEnter methods.
     // Additional arguments are passed to the new state's onEnter method.
     StateMachine.prototype.to = function(stateName /*, ... */) {
@@ -83,6 +99,14 @@ function(_) {
     StateMachine.prototype.addState = function(stateName, state) {
         this._states[stateName] = state;
         state[ATTACH_METHOD_NAME] && state[ATTACH_METHOD_NAME](this);
+    };
+
+    // Add an event handler to an object that invokes the current state.
+    StateMachine.prototype.addHandler = function(object, handlerName) {
+        var self = this;
+        object[handlerName].add(function() {
+            self.invokeWith(handlerName, [object].concat(_.drop(arguments, 0)));
+        });
     };
 
     // Remove a state from a state machine.
