@@ -97,7 +97,42 @@ function(_, Phaser, Layout, StateMachine){
         mainMenu: ['menubtn', 1, 0, 2, 3, { }],
     };
 
-    global.state = logicState;
+    global.logicState = logicState;
+
+    logicState.addState('mainmenu', {
+        onPreloadGame: function(game) {
+            game.state.add('mainmenu', {
+                create: function() {
+                    var layout = Layout.add([
+                        ['image', 'sky',    ['menubg'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
+                        ['solid', 'shade',  [game.width, game.height, { fill: [0,0,0,0.5] }], { x: 0, y: 0 } ],
+                        ['text', 'welcome', ["Welcome to the Parable\nof the Wise and Foolish Builders!",
+                                { font: "bold 36px 'Verdana'", fill: '#FFF', stroke: '#000', strokeThickness: 4, align: 'center' }
+                            ], { x: 50, y: 0 }, { x: 50, y: '50px' } ],
+                        ['button', 'build', ['mainMenu', "Let's build!"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+20px" }],
+                        ['button', 'joshdemow', ['mainMenu', "Wise Josh"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+20px" }],
+                        ['button', 'joshdemof', ['mainMenu', "Foolish Josh"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+20px" }],
+                    ]);
+                    global.layout = layout;
+                }
+            });
+
+            game.load.image('menubg', 'assets/backgrounds/sea-361802_1920.jpg');
+            game.load.spritesheet('menubtn', 'assets/menu/button.png', 600, 100);
+        },
+        onEnter: function(prevState) {
+            game.state.start('mainmenu');
+        },
+        onButton: function(which) {
+            var fn = {
+                joshdemow: function() { logicState.to('joshdemo', 'wise'); },
+                joshdemof: function() { logicState.to('joshdemo', 'fool'); },
+            }[which];
+            if (fn)
+                fn();
+        },
+    });
+
     logicState.addState('start', {
         onEnter: function(prevState, screenMode) {
             document.body.className = "game";
@@ -213,27 +248,13 @@ function(_, Phaser, Layout, StateMachine){
                     };
 
                     logicState.invokeAll('onCreateGame', game);
-
-                    var layout = Layout.add([
-                        ['image', 'sky',    ['menubg'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
-                        ['solid', 'shade',  [width, height, { fill: [0,0,0,0.5] }], { x: 0, y: 0 } ],
-                        ['text', 'welcome', ["Welcome to the Parable\nof the Wise and Foolish Builders!",
-                                { font: "bold 36px 'Verdana'", fill: '#FFF', stroke: '#000', strokeThickness: 4, align: 'center' }
-                            ], { x: 50, y: 0 }, { x: 50, y: '50px' } ],
-                        ['button', 'demo1', ['mainMenu', "Testing 1..."], { x: 50, y: 0 }, 'welcome', { x: 50, y: "100%+20px" }],
-                        ['button', 'demo2', ['mainMenu', "Testing 2..."], { x: 50, y: 0 }, 'demo1', { x: 50, y: "100%+20px" }],
-                    ]);
-                    layout.demo1.debug = true;
-                    global.layout = layout;
+                    logicState.to('mainmenu');
                 },
             });
         },
-        onButton: function(which) {
-            console.log("onButton(%s)", which);
-        },
     });
 
-    logicState.addState('joshdemo', {
+    logicState.addState('not joshdemo', {
     onEnter: function(prevState, screenMode) {
         document.body.className = "game";
         var ratio = screenModes[screenMode].ratio();
@@ -491,12 +512,18 @@ function(_, Phaser, Layout, StateMachine){
                 var handler = function() {
                     if (this.id.substr(-11) === 'full_screen')
                         document.body[device.requestFullscreen]();
-                    for (var mode in screenModes)
-                        document.getElementById(mode).removeEventListener('click', handler);
+                    for (var mode in screenModes) {
+                        var el = document.getElementById(mode);
+                        if (el)
+                            el.removeEventListener('click', handler);
+                    }
                     logicState.to('start', this.id);
                 };
-                for (var mode in screenModes)
-                    document.getElementById(mode).addEventListener('click', handler);
+                for (var mode in screenModes) {
+                    var el = document.getElementById(mode);
+                    if (el)
+                        el.addEventListener('click', handler);
+                }
                 document.removeEventListener("readystatechange", onComplete);
             };
 

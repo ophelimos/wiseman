@@ -17,7 +17,7 @@
         },
     });
 
-    require(['game'],
+    require(['game', 'joshdemo'],
     function(logicState) {
         logicState.to('resolution-select');
     });
