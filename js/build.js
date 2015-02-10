@@ -78,7 +78,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                     game.physics.startSystem(Phaser.Physics.P2JS);
 
                     // x, y, width, height, collide with left, right, top, bottom, setCollisionGroup
-                    game.physics.p2.setBounds(0, 0, game.width, game.height, false, false, false, true, false);
+                    game.physics.p2.setBounds(0, 0, game.width, game.height + 500, false, false, false, true, false);
                     game.physics.p2.gravity.y = 10000;
                     game.physics.p2.gravity.x = 0;
                     game.physics.p2.restitution = 0.2;
@@ -86,7 +86,8 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
 
                     state.layout = Layout.add([
                         ['image', 'sky', ['bg_' + state.background], { x: 50, y: 80 }, { x: 50, y: 80 } ],
-                        ['solid', 'ground', [2048, 1, { body: { static: 1 } }], 'sky', { x: 0, y: "1280px" } ],
+                        ['solid', 'ground',   [1850, 730, { body: { kinematic: 1 } }], 'sky', { x: "-500px", y: "1310px" } ],
+                        ['solid', 'platform', [1000,  30, { body: { kinematic: 1 } }], { x: 0, y: 100 }, 'ground', { x: "600px", y: 0 } ],
                         ['image', 'palette', ['palette'], { x: 100, y: 50 }, { x: "100%-36px", y: 50 } ],
                         ['button', 'done', [['256x164', 0, 0, 0, 0, buttonFont], "I’m\nDone!"], 'palette', { x: "293px", y: "839px" } ],
                         ['button', 'more', [['246x164', 0, 0, 0, 0, disabledFont], "More"], 'palette', { x: "31px", y: "839px" } ],
@@ -110,8 +111,10 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                     // Allow collision events
                     game.physics.p2.setImpactEvents(true);
 
-                    state.layout.ground.body.setCollisionGroup(baseCollisionGroup);
-                    state.layout.ground.body.collides([brickCollisionGroup, rainCollisionGroup]);
+                    _.forEach(['ground', 'platform'], function(key) {
+                        state.layout[key].body.setCollisionGroup(baseCollisionGroup);
+                        state.layout[key].body.collides([brickCollisionGroup, rainCollisionGroup]);
+                    });
 
                     // Sprites for the actual materials
                     var i;
