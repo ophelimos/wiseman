@@ -251,7 +251,6 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                 drop.body.collides([brickCollisionGroup, baseCollisionGroup], function(raindrop) {
                     raindrop.sprite.animations.play('splash', 15, false, true);
                 });
-                drop.kill();
             }
             game.time.events.loop(100, this.dropRain, this);
         },
@@ -259,7 +258,10 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
             var game = this.game;
             // Kill any stationary drops.
             raindrops.forEachAlive(function(drop) {
-                // or any that have somehow fallen out of the world.
+                // Don't kill splashing drops; wait for them to finish.
+                if (drop.animations.currentAnim && !drop.animations.currentAnim.isFinished)
+                    return;
+                // Also kill any that have somehow fallen out of the world.
                 if (drop.body.y > game.height) {
                     drop.kill();
                     return;
