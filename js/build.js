@@ -93,7 +93,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                     game.physics.startSystem(Phaser.Physics.P2JS);
 
                     // x, y, width, height, collide with left, right, top, bottom, setCollisionGroup
-                    game.physics.p2.setBounds(0, 0, game.width, game.height, true, true, false, true, false);
+                    game.physics.p2.setBounds(0, 0, game.width, game.height, false, false, false, true, false);
                     game.physics.p2.gravity.y = 10000;
                     game.physics.p2.gravity.x = 0;
                     game.physics.p2.restitution = 0.2;
@@ -159,20 +159,28 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
         },
         onEnter: function(prevState, background) {
             this.background = background;
-            game.state.start('world');
+            this.game.state.start('world');
         },
         onButton: function(which) {
-            var state = this;
             if (which === 'done') {
-                // Remove build UI.
-                _.forEach(['palette', 'done', 'more', 'material1', 'material2', 'material3', 'material4'], function(item) {
-                    state.layout[item].destroy();
-                });
                 // Rain
                 logicState.to('storm');
             }
         },
+        onLeave: function(nextState) {
+            var state = this;
+            if (nextState === 'storm') {
+                // Remove build UI.
+                _.forEach(['palette', 'done', 'more', 'material1', 'material2', 'material3', 'material4'], function(item) {
+                    state.layout[item].destroy();
+                });
+                bricks.forEach(function(brick) {
+                    brick.inputEnabled = false;
+                });
+            }
+        },
         onInputDown: function(events, button) {
+            var game = this.game;
             var brick = button.name;
             var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, brick);
             brickSprite.name = brick;
@@ -203,9 +211,9 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
         onDown: function(input, event) {
             // Check if we hit a brick
             var brickbodies = [];
-            bricks.iterate('exists', true, Phaser.Group.RETURN_NONE, [].push, brickbodies);
+            bricks.forEach([].push, brickbodies);
             
-            var hitbodies = game.physics.p2.hitTest(event.position, brickbodies);
+            var hitbodies = this.game.physics.p2.hitTest(event.position, brickbodies);
             
             if (hitbodies.length)
             {
@@ -248,8 +256,14 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
             game.time.events.loop(100, this.dropRain, this);
         },
         dropRain: function() {
+            var game = this.game;
             // Kill any stationary drops.
             raindrops.forEachAlive(function(drop) {
+                // or any that have somehow fallen out of the world.
+                if (drop.body.y > game.height) {
+                    drop.kill();
+                    return;
+                }
                 var velocity = drop.body.velocity;
                 var speed2 = velocity.x*velocity.x + velocity.y*velocity.y;
                 if (speed2 < DROP_VELOCITY_THRESHOLD*DROP_VELOCITY_THRESHOLD)
