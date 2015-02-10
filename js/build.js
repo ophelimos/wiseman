@@ -67,21 +67,6 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
     };
     var disabledFont = _.defaults({ fill: 'rgba(0,0,0,0.5)', stroke: 'rgba(255,255,255,0.2)' }, buttonFont);
 
-    function pickUpBody(clickedBody, pointer) {
-        clickedBody.sprite.alive = false;
-
-        // p2 uses different coordinate system, so convert the pointer position to p2's coordinate system
-        var physicsPos = [game.physics.p2.pxmi(pointer.position.x), game.physics.p2.pxmi(pointer.position.y)];
-        var localPointInBody = [0, 0];
-        // this function takes physicsPos and converts it to the body's local coordinate system
-        clickedBody.toLocalFrame(localPointInBody, physicsPos);
-
-        // use a revoluteContraint to attach mouseBody to the clicked body
-        //mouseConstraint = this.game.physics.p2.createRevoluteConstraint(mouseBody, [0, 0], clickedBody, [game.physics.p2.mpxi(localPointInBody[0]), game.physics.p2.mpxi(localPointInBody[1]) ]);
-        mouseConstraint = global.game.physics.p2.createLockConstraint(mouseBody, clickedBody);
-        
-    }
-
     logicState.addState('build', {
         onPreloadGame: function(game) {
             var state = this;
