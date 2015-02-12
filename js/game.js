@@ -151,6 +151,7 @@ function(_, Phaser, Layout, StateMachine){
                 create: function() {
                     // scale input to use canvas pixels rather than screen pixels
                     game.scale.scaleMode = Phaser.ScaleManager.EXACT_FIT;
+                    game.scale.fullScreenScaleMode = Phaser.ScaleManager.SHOW_ALL;
 
                     global.game = game;
                     Layout.world = game.world;
@@ -286,8 +287,18 @@ function(_, Phaser, Layout, StateMachine){
                 if (document.readyState === 'complete') {
                     document.removeEventListener('readystatechange', onComplete);
                     document.body.className = "prestart";
-                    // Phaser.Device.whenReady(setUpPrestart);
-                    setUpPrestart(Phaser.Device);
+
+                    // Detect full screen capability.
+                    var device = { };
+                    _.forEach(['requestFullscreen', 'webkitRequestFullscreen', 'mozRequestFullScreen', 'msRequestFullscreen'], function(name) {
+                        if (!device.requestFullscreen && document.body[name])
+                            device.requestFullscreen = name;
+                    });
+                    _.forEach(['exitFullscreen', 'webkitExitFullscreen', 'mozCancelFullScreen', 'msExitFullscreen'], function(name) {
+                        if (!device.exitFullscreen && document[name])
+                            device.exitFullscreen = name;
+                    });
+                    setUpPrestart(device);
                 }
             };
             document.addEventListener("readystatechange", onComplete);
