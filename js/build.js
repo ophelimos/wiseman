@@ -342,6 +342,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                 drop.body.collides([brickCollisionGroup, baseCollisionGroup], function(raindrop) {
                     raindrop.sprite.animations.play('splash', 15, false, true);
                 });
+                drop.kill();
             }
             game.time.events.loop(100, this.dropRain, this);
         },
