@@ -53,6 +53,102 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
             }
         }
     };
+    // Mass per pixel; large wall with door has ~335,000 pixels.
+    // Masses around 500 start to visibly sink into the ground.
+    var WOOD_DENSITY = 0.001;
+    var PIECE_SCALE = 1;
+    var pieceMap = {}, pieces = [
+        {
+            image: 'wisemanhouse_leftroof_prelim.png',
+            outline: [
+                495, 283,
+                495, 66,
+                183, 230,
+                183, 283,
+            ],
+            baseline: [
+                183, 283,
+                495, 283,
+            ],
+            density: WOOD_DENSITY,
+        },
+        {
+            image: 'wisemanhouse_rightroof_prelim.png',
+            outline: [
+                330, 283,
+                330, 230,
+                0, 60,
+                0, 283,
+            ],
+            baseline: [
+                330, 230,
+                330, 283,
+            ],
+            density: WOOD_DENSITY,
+        },
+        {
+            image: 'wisemanhouse_doorpanel_prelim.jpg',
+            density: WOOD_DENSITY,
+        },
+        {
+            image: 'wisemanhouse_plank_previs.jpg',
+            density: WOOD_DENSITY,
+        },
+    ];
+
+    var sumOverPolyEdges = function(poly, f) {
+        var sum = 0, i = 0, n = poly.length;
+        if (n < 4)
+            return sum;
+        for (n -= 2; i < n; i += 2)
+            sum += f(poly[i + 0], poly[i + 1], poly[i + 2], poly[i + 3]);
+        sum += f(poly[i + 0], poly[i + 1], poly[0], poly[1]);
+        return sum;
+    };
+    var measurePoly = function(poly) {
+        var area = 1/2 * sumOverPolyEdges(poly, function(x1, y1, x2, y2) {
+            return (y2 + y1) * (x2 - x1);
+        });
+        return {
+            area: area,
+            // centroid == center of mass
+            cx: 1/(6*area) * sumOverPolyEdges(poly, function(x1, y1, x2, y2) {
+                    return (x1 + x2) * (x2*y1 - x1*y2);
+                }),
+            cy: 1/(6*area) * sumOverPolyEdges(poly, function(x1, y1, x2, y2) {
+                    return (y1 + y2) * (x2*y1 - x1*y2);
+                }),
+        };
+    };
+    // May be called multiple times if the state is re-entered; needs to be idempotent.
+    var updatePiecePhysics = function(piece, image) {
+        var area = 0;
+        if (piece.outline) {
+            var measure = measurePoly(piece.outline);
+            area = measure.area;
+            if (area < 0) {
+                // Points are in the wrong order, reverse them.
+                // (Aside from negative area here, physics will freak out.)
+                var old = piece.outline, i = old.length;
+                piece.outline = [];
+                while (i) {
+                    i -= 2;
+                    piece.outline.push(old[i+0], old[i+1]);
+                }
+                area = -area;
+            }
+            piece.centroid = { x: measure.cx, y: measure.cy };
+        } else {
+            area = image.width * image.height;
+        }
+        piece.mass = piece.density * area;
+        if (!piece.baseline)
+            piece.baseline = [
+                0, image.height,
+                image.width, image.height
+            ];
+        // TODO: adjust baseline
+    };
 
     var buttonFont = {
         font: "bold 67px 'Verdana'",
@@ -91,10 +187,10 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                         ['image', 'palette', ['palette'], { x: 100, y: 50 }, { x: "100%-36px", y: 50 } ],
                         ['button', 'done', [['256x164', 0, 0, 0, 0, buttonFont], "I’m\nDone!"], 'palette', { x: "293px", y: "839px" } ],
                         ['button', 'more', [['246x164', 0, 0, 0, 0, disabledFont], "More"], 'palette', { x: "31px", y: "839px" } ],
-                        ['sprite', 'material1', ['material1', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "165px" } ],
-                        ['sprite', 'material2', ['material2', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "165px" } ],
-                        ['sprite', 'material3', ['material3', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "435px" } ],
-                        ['sprite', 'material4', ['material4', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "435px" } ],
+                        ['sprite', 'material0', ['material0', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "165px" } ],
+                        ['sprite', 'material1', ['material1', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "165px" } ],
+                        ['sprite', 'material2', ['material2', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "435px" } ],
+                        ['sprite', 'material3', ['material3', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "435px" } ],
                     ]);
 
                     // Collisions must be two-way: each collision group must be set to
@@ -117,11 +213,11 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                     });
 
                     // Sprites for the actual materials
-                    var i;
-                    for (i = 1; i <= 4; ++i) {
-                        state.layout['material'+i].inputEnabled = true;
-                        logicState.addHandler(state.layout['material'+i].events, 'onInputDown');
-                    }
+                    _.forOwn(pieceMap, function(pieceDef, key) {
+                        state.layout[key].inputEnabled = true;
+                        logicState.addHandler(state.layout[key].events, 'onInputDown');
+                        updatePiecePhysics(pieceDef, game.cache.getFrame(key));
+                    });
 
                     // We don't actually create bricks until they click on one to create
                     bricks = game.add.group(game.world, "bricks", false, true, Phaser.Physics.P2);
@@ -139,11 +235,12 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
             });
 
             game.load.image('palette', 'assets/palette.png');
-            game.load.image('material1', 'assets/building/wisemanhouse_leftroof_prelim.png');
-            game.load.image('material2', 'assets/building/wisemanhouse_rightroof_prelim.png');
-            game.load.image('material3', 'assets/building/wisemanhouse_plank_previs.jpg');
-            game.load.image('material4', 'assets/building/wisemanhouse_doorpanel_prelim.jpg');
-            game.load.physics('physicsData', 'assets/physics/materials.json');
+            game.load.image('snapguide', 'assets/snapguide.png');
+            _.forEach(pieces, function(piece, index) {
+                var key = 'material' + index;
+                game.load.image(key, 'assets/building/' + piece.image);
+                pieceMap[key] = piece;
+            });
         },
         onEnter: function(prevState, background) {
             this.background = background;
@@ -159,7 +256,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
             var state = this;
             if (nextState === 'storm') {
                 // Remove build UI.
-                _.forEach(['palette', 'done', 'more', 'material1', 'material2', 'material3', 'material4'], function(item) {
+                _.forEach(['palette', 'done', 'more'].concat(_.keys(pieceMap)), function(item) {
                     state.layout[item].destroy();
                 });
                 bricks.forEach(function(brick) {
@@ -169,27 +266,31 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
         },
         onInputDown: function(events, button) {
             var game = this.game;
-            var brick = button.name;
-            var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, brick);
-            brickSprite.name = brick;
-            // The physics body will not scale with the sprite, so scaling is not useful with physics data
-            //brickSprite.scale.setTo(0.25, 0.25);
+            var key = button.name;
+            var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, key);
+            brickSprite.name = key;
             brickSprite.inputEnabled = true;
             brickSprite.input.useHandCursor = true;
-            // Doesn't work with p2, we have to enable drag in a different way
-            //brickSprite.input.enableDrag();
             game.physics.p2.enable(brickSprite);
-            // Unnecessary, since this is what it does by default
-            //brickSprite.body.setRectangleFromSprite();
-            if ( brickSprite.name == "material1" || brickSprite.name == "material2" ) {
+            if (pieceMap[key].outline) {
                 brickSprite.body.clearShapes();
-                brickSprite.body.loadPolygon('physicsData', brickSprite.name);
+                var poly = [], i, polygon = pieceMap[key].outline, n = polygon.length;
+                for (i = 0; i < n; i += 2) {
+                    var x = polygon[i+0], y = polygon[i+1];
+                    poly.push(PIECE_SCALE * x - brickSprite.width/2);
+                    poly.push(PIECE_SCALE * y - brickSprite.height/2);
+                }
+                brickSprite.body.addPolygon({ skipSimpleCheck: 1 }, poly);
+                // P2 internally adjusts the polygon so that its centroid aligns with the sprite anchor.
+                // We need to adjust the sprite anchor to match. (where 0 = top/left, 0.5 = center, 1 = bottom/right)
+                brickSprite.anchor.x = pieceMap[key].centroid.x / brickSprite.width;
+                brickSprite.anchor.y = pieceMap[key].centroid.y / brickSprite.height;
             }
             brickSprite.body.setCollisionGroup(brickCollisionGroup);
             brickSprite.body.collides([brickCollisionGroup, baseCollisionGroup, rainCollisionGroup]);
             // Try and make these things a little more realistic
             // brickSprite.body.damping = 0.9;
-            brickSprite.body.mass = 1000;
+            brickSprite.body.mass = pieceMap[key].mass;
             // Make sure inertia is sane when physics start to apply.
             brickSprite.body.inertia = 0;
 

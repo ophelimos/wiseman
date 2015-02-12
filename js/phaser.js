@@ -80409,8 +80409,7 @@ Body.prototype.fromPolygon = function(path,options){
         this.addShape(c,cm);
     }
 
-// http://www.html5gamedevs.com/topic/5025-p2bodyaddpolygon-how-coords-work/
-//    this.adjustCenterOfMass();
+    this.adjustCenterOfMass();
 
     this.aabbNeedsUpdate = true;
 
