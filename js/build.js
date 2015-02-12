@@ -13,7 +13,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
     var mouseConstraint;
     var DROP_VELOCITY_THRESHOLD = 0.02;
     var DROP_COUNT_GEN = Random.poisson(5);
-    var DRAG_THRESHOLD = 50;
+    var DRAG_THRESHOLD = 40;
     var drag = {
         moveCallbackIndex: -1,
         object: undefined,
@@ -268,6 +268,8 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
             var game = this.game;
             var key = button.name;
             var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, key);
+            brickSprite.scale.x = PIECE_SCALE;
+            brickSprite.scale.y = PIECE_SCALE;
             brickSprite.name = key;
             brickSprite.inputEnabled = true;
             brickSprite.input.useHandCursor = true;
@@ -283,8 +285,8 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                 brickSprite.body.addPolygon({ skipSimpleCheck: 1 }, poly);
                 // P2 internally adjusts the polygon so that its centroid aligns with the sprite anchor.
                 // We need to adjust the sprite anchor to match. (where 0 = top/left, 0.5 = center, 1 = bottom/right)
-                brickSprite.anchor.x = pieceMap[key].centroid.x / brickSprite.width;
-                brickSprite.anchor.y = pieceMap[key].centroid.y / brickSprite.height;
+                brickSprite.anchor.x = PIECE_SCALE * pieceMap[key].centroid.x / brickSprite.width;
+                brickSprite.anchor.y = PIECE_SCALE * pieceMap[key].centroid.y / brickSprite.height;
             }
             brickSprite.body.setCollisionGroup(brickCollisionGroup);
             brickSprite.body.collides([brickCollisionGroup, baseCollisionGroup, rainCollisionGroup]);
