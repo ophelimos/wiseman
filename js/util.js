@@ -60,4 +60,22 @@
             };
         },
     });
+
+    define('Util',
+    ['lodash'],
+    function(_) {
+        return {
+            SumAcc: (function(){
+                var SumAcc = function() { this.sum = 0; };
+                SumAcc.prototype.add = function(x) { this.sum += x; };
+                return SumAcc;
+            })(),
+            ConcatAcc: (function(){
+                var ConcatAcc = function() { this.sum = []; };
+                ConcatAcc.prototype.add = function(x) { this.sum.push(x); };
+                return ConcatAcc;
+            })(),
+        };
+    });
+
 })();

@@ -1,5 +1,5 @@
-define(['lodash', 'phaser', 'Layout', 'StateMachine', 'game', 'Random'],
-function(_, Phaser, Layout, StateMachine, logicState, Random){
+define(['lodash', 'phaser', 'Layout', 'StateMachine', 'game', 'Random', 'Util'],
+function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
     "use strict";
 
     var global = window;
@@ -66,10 +66,6 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                 183, 230,
                 183, 283,
             ],
-            baseline: [
-                183, 283,
-                495, 283,
-            ],
             density: WOOD_DENSITY,
         },
         {
@@ -79,10 +75,6 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                 330, 230,
                 0, 60,
                 0, 283,
-            ],
-            baseline: [
-                330, 230,
-                330, 283,
             ],
             density: WOOD_DENSITY,
         },
@@ -96,14 +88,16 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
         },
     ];
 
-    var sumOverPolyEdges = function(poly, f) {
-        var sum = 0, i = 0, n = poly.length;
+    var sumOverPolyEdges = function(poly, f, acc) {
+        if (!acc)
+            acc = new Util.SumAcc();
+        var i = 0, n = poly.length;
         if (n < 4)
-            return sum;
+            return acc.sum;
         for (n -= 2; i < n; i += 2)
-            sum += f(poly[i + 0], poly[i + 1], poly[i + 2], poly[i + 3]);
-        sum += f(poly[i + 0], poly[i + 1], poly[0], poly[1]);
-        return sum;
+            acc.add(f(poly[i + 0], poly[i + 1], poly[i + 2], poly[i + 3]));
+        acc.add(f(poly[i + 0], poly[i + 1], poly[0], poly[1]));
+        return acc.sum;
     };
     var measurePoly = function(poly) {
         var area = 1/2 * sumOverPolyEdges(poly, function(x1, y1, x2, y2) {
@@ -122,7 +116,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
     };
     // May be called multiple times if the state is re-entered; needs to be idempotent.
     var updatePiecePhysics = function(piece, image) {
-        var area = 0;
+        var area = 0, poly;
         if (piece.outline) {
             var measure = measurePoly(piece.outline);
             area = measure.area;
@@ -138,18 +132,148 @@ function(_, Phaser, Layout, StateMachine, logicState, Random){
                 area = -area;
             }
             piece.centroid = { x: measure.cx, y: measure.cy };
+            poly = piece.outline;
         } else {
+            piece.width = image.width;
+            piece.height = image.height;
             area = image.width * image.height;
+            // counter-clockwise rectangular outline
+            poly = [
+                0, 0,
+                0, piece.height,
+                piece.width, piece.height,
+                piece.width, 0,
+            ];
         }
         piece.mass = piece.density * area;
-        if (!piece.baseline)
-            piece.baseline = [
-                0, image.height,
-                image.width, image.height
-            ];
-        // TODO: adjust baseline
+        if (!pieces.edges) {
+            piece.edges = sumOverPolyEdges(poly, function(x1, y1, x2, y2) {
+                var dx = x2 - x1, dy = y2 - y1, length = Math.sqrt(dx*dx + dy*dy);
+                return {
+                    start:  { x: x1, y: y1 },
+                    center: { x: (x1+x2)/2, y: (y1+y2)/2 },
+                    end:    { x: x2, y: y2 },
+                    dx: dx / length,
+                    dy: dy / length,
+                    length: length,
+                };
+            }, new Util.ConcatAcc());
+        }
     };
+    var SNAP_ANGLE_THRESHOLD = 10;
+    var SNAP_DISTANCE_THRESHOLD = 40;
+    var COS_SNAP_ANGLE_THRESHOLD = Math.cos(SNAP_ANGLE_THRESHOLD * Math.PI / 180);
+    var SQR_SNAP_DISTANCE_THRESHOLD = SNAP_DISTANCE_THRESHOLD*SNAP_DISTANCE_THRESHOLD;
+    // Returns an offset and rotation to make object snap to target.
+    // @param target The ray segment in the world to potentially snap to.
+    // @param object The ray segment of the object.
+    // @param pivot  The point around which the object segment will rotate.
+    var snapDelta = function(target, object, pivot) {
+        // Dot product of normalized vectors = cosine of angle between them.
+        var cos = target.dx * object.dx + target.dy * object.dy;
+        // Negative because we want them to be anti-parallel vectors.
+        // (On opposite sides of their respective geometry.)
+        if (cos > -COS_SNAP_ANGLE_THRESHOLD)
+            return null;
 
+        // Get distance from center of object to infinite target line.
+        var dx = object.center.x - target.start.x, dy = object.center.y - target.start.y;
+        // This time the dot product is a projection object-target vector onto the target vector.
+        var t = dx * target.dx + dy * target.dy;
+        // That gives us the closest point on the infinite target line to that object center.
+        var x = target.start.x + t * target.dx, y = target.start.y + t * target.dy;
+        // ...and we can just get the distance between that point and the center.
+        dx = x - object.center.x; dy = y - object.center.y;
+        var dsqr = dx * dx + dy * dy;
+        if (dsqr > SQR_SNAP_DISTANCE_THRESHOLD)
+            return null;
+
+        // It's close enough to the line to snap, but maybe not close enough to the finite segment.
+        // But while we're looking at the target length, also figure out where we'd snap to along it.
+
+        // The actual snap distances.
+        dx = object.end.x - target.start.x; dy = object.end.y - target.start.y;
+        var dsqrStart = dx * dx + dy * dy;
+        dx = object.center.x - target.center.x; dy = object.center.y - target.center.y;
+        var dsqrCenter = dx * dx + dy * dy;
+        dx = object.start.x - target.end.x; dy = object.start.y - target.end.y;
+        var dsqrEnd = dx * dx + dy * dy;
+
+        var snapStart  = dsqrStart  <= SQR_SNAP_DISTANCE_THRESHOLD;
+        var snapCenter = dsqrCenter <= SQR_SNAP_DISTANCE_THRESHOLD;
+        var snapEnd    = dsqrEnd    <= SQR_SNAP_DISTANCE_THRESHOLD;
+
+        if (!snapStart && !snapCenter && !snapEnd) {
+            // Rejection snap distances.
+            dx = object.start.x - target.start.x; dy = object.start.y - target.start.y;
+            var dsqrRejectStart = dx * dx + dy * dy;
+            dx = object.end.x - target.end.x; dy = object.end.y - target.end.y;
+            var dsqrRejectEnd = dx * dx + dy * dy;
+
+            // If either wrong end is closer than the right end, reject it.
+            if (dsqrRejectStart < dsqrStart && dsqrRejectStart < dsqrEnd)
+                return null;
+            if (dsqrRejectEnd < dsqrStart && dsqrRejectStart < dsqrEnd)
+                return null;
+        }
+
+        // Now we know we can snap -- just gotta figure out how.
+
+        // Resolve conditions where we could snap multiple points.
+        if (snapStart && snapEnd) {
+            if (dsqrStart < dsqrEnd) {
+                snapEnd = snapCenter = false;
+            } else if (dsqrStart == dsqrEnd) {
+                snapStart = snapEnd = false;
+                snapCenter = true;
+            } else {
+                snapStart = snapCenter = false;
+            }
+        } else if (snapStart && snapCenter) {
+            if (dsqrCenter < dsqrStart)
+                snapStart = false;
+            else
+                snapCenter = false;
+        } else if (snapEnd && snapCenter) {
+            if (dsqrCenter < dsqrEnd)
+                snapEnd = false;
+            else
+                snapCenter = false;
+        }
+
+        // We have at most one snap point now and can calculate the result.
+        var result = {};
+
+        // Need angle first because ends are going to rotate around the pivot.
+        // We can't reuse the original dot product for angle, because it can't distinguish cw/ccw angles.
+        // We could probably use atan2 here, but we need both sin and cos anyway for snapping distance.
+        var sin = object.dx * target.dy - object.dy * target.dx;
+        result.rotation = Math.asin(sin);
+        // Using Phaser nomenclature, where rotation is radians and angle is degrees.
+        result.angle = result.rotation * 180 / Math.PI;
+
+        if (snapStart) {
+            x = target.start.x; y = target.start.y;
+            dx = object.start.x - pivot.x; dy = object.start.y - pivot.dy;
+        } else if (snapCenter) {
+            x = target.center.x; y = target.center.y;
+            dx = object.center.x - pivot.x; dy = object.start.y - pivot.dy;
+        } else if (snapEnd) {
+            x = target.end.x; y = target.end.y;
+            dx = object.end.x - pivot.x; dy = object.end.y - pivot.dy;
+        } else {
+            // x, y are already the closest point on target to (unrotated) center
+            dx = object.center.x - pivot.x; dy = object.start.y - pivot.dy;
+        }
+        var snapx = pivot.x + cos * dx + sin * dy;
+        var snapy = pivot.y + cos * dy - sin * dx;
+        result.dx = snapx - x;
+        result.dy = snapy - y;
+        result.x = pivot.x + result.dx;
+        result.y = pivot.y + result.dy;
+
+        return result;
+    };
     var buttonFont = {
         font: "bold 67px 'Verdana'",
         fill: '#000',
