@@ -537,14 +537,10 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             var hitbodies = this.game.physics.p2.hitTest(event.position, brickbodies);
             
             if (hitbodies.length)
-            {
                 drag.begin(hitbodies[0].parent, event.position.x, event.position.y);
-                drag.object.motionState = Phaser.Physics.P2.Body.STATIC;
-            }
         },
         onUp: function(input, event) {
             if (drag.object) {
-                drag.object.motionState = Phaser.Physics.P2.Body.DYNAMIC;
                 drag.object.velocity.mx = drag.object.velocity.my = 0;
                 drag.end(event.position.x, event.position.y);
             }
@@ -562,6 +558,10 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             var game = this.game;
             if (game.state.current !== 'world')
                 game.state.start('world');
+
+            bricks.forEach(function(sprite) {
+                sprite.body.motionState = Phaser.Physics.P2.Body.DYNAMIC;
+            });
 
             // Create some raindrops
             for (var i = 0; i < 100; i++) {
