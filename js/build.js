@@ -607,6 +607,8 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                     drop.body.velocity.x = 0;
                     drop.body.velocity.y = 500 + Math.random() * 2000;
                     drop.revive();
+                    // As a last resort, kill anything that survives for 10 seconds.
+                    drop.lifespan = 10000;
                     drop.frame = 0;
                 }
             }
