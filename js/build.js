@@ -4,6 +4,22 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
 
     var global = window;
 
+    // Mass per pixel; large wall with door has ~335,000 pixels.
+    // Masses around 500 start to visibly sink into the ground.
+    var WOOD_DENSITY = 0.001;
+    var PIECE_SCALE = 1;
+    // Rain drops below this speed are killed.
+    var DROP_VELOCITY_THRESHOLD = 0.02;
+    // Generator for the number of new rain drops in each period.
+    var DROP_COUNT_GEN = Random.poisson(5);
+    // Number of milliseconds between raid drop periods.
+    var DROP_TIMER_PERIOD = 100;
+    var DRAG_THRESHOLD = 40;
+    var SNAP_ANGLE_THRESHOLD = 10;
+    var SNAP_DISTANCE_THRESHOLD = 40;
+    var COS_SNAP_ANGLE_THRESHOLD = Math.cos(SNAP_ANGLE_THRESHOLD * Math.PI / 180);
+    var SQR_SNAP_DISTANCE_THRESHOLD = SNAP_DISTANCE_THRESHOLD*SNAP_DISTANCE_THRESHOLD;
+
     var bricks;
     var raindrops;
     var brickCollisionGroup;
@@ -11,9 +27,6 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
     var baseCollisionGroup;
     var mouseBody;
     var mouseConstraint;
-    var DROP_VELOCITY_THRESHOLD = 0.02;
-    var DROP_COUNT_GEN = Random.poisson(5);
-    var DRAG_THRESHOLD = 40;
     var drag = {
         moveCallbackIndex: -1,
         object: undefined,
@@ -42,10 +55,21 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                 if (this.passedThreshold) {
                     this.object.x = x;
                     this.object.y = y;
+                    trySnap(this.object);
                 }
             }
         },
         end: function(x, y) {
+            if (this.object) {
+                var snap = trySnap(this.object);
+                if (snap) {
+                    if (snap.sprite)
+                        lock(this.object.sprite, snap.sprite, 5);
+                    getEdges(this.object.sprite, snapPool);
+                } else {
+                    this.object.sprite.destroy(true);
+                }
+            }
             this.object = undefined;
             if (this.moveCallbackIndex !== -1) {
                 this.game.input.deleteMoveCallback(this.moveCallbackIndex);
@@ -53,10 +77,6 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             }
         }
     };
-    // Mass per pixel; large wall with door has ~335,000 pixels.
-    // Masses around 500 start to visibly sink into the ground.
-    var WOOD_DENSITY = 0.001;
-    var PIECE_SCALE = 1;
     var pieceMap = {}, pieces = [
         {
             image: 'wisemanhouse_leftroof_prelim.png',
@@ -116,7 +136,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
     };
     // May be called multiple times if the state is re-entered; needs to be idempotent.
     var updatePiecePhysics = function(piece, image) {
-        var area = 0, poly;
+        var area = 0;
         if (piece.outline) {
             var measure = measurePoly(piece.outline);
             area = measure.area;
@@ -132,48 +152,68 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                 area = -area;
             }
             piece.centroid = { x: measure.cx, y: measure.cy };
-            poly = piece.outline;
         } else {
             piece.width = image.width;
             piece.height = image.height;
             area = image.width * image.height;
-            // counter-clockwise rectangular outline
+        }
+        piece.mass = piece.density * area;
+    };
+    var snapPool = [];
+    var getEdges = function(sprite, list) {
+        var piece, poly;
+        piece = pieceMap[sprite.name];
+        if (piece.outline)
+            poly = piece.outline;
+        else
             poly = [
                 0, 0,
                 0, piece.height,
                 piece.width, piece.height,
                 piece.width, 0,
             ];
-        }
-        piece.mass = piece.density * area;
-        if (!pieces.edges) {
-            piece.edges = sumOverPolyEdges(poly, function(x1, y1, x2, y2) {
-                var dx = x2 - x1, dy = y2 - y1, length = Math.sqrt(dx*dx + dy*dy);
-                return {
+        // origin, scaled
+        // The sprite position is updated weirdly from the body position, so we have to take the body position.
+        // Updating the sprite position directly doesn't help for some reason.
+        var x0 = sprite.body.x - sprite.width * sprite.anchor.x, y0 = sprite.body.y - sprite.height * sprite.anchor.y;
+        var sin = Math.sin(sprite.rotation), cos = Math.cos(sprite.rotation);
+        return sumOverPolyEdges(poly, function(x1, y1, x2, y2) {
+            // Convert from template to instance coordinate space.
+            // (rotate, scale, translate)
+            var xr, yr;
+            xr = cos * x1 + sin * y1;
+            yr = cos * y1 - sin * x1;
+            x1 = x0 + xr * sprite.scale.x;
+            y1 = y0 + yr * sprite.scale.y;
+            xr = cos * x2 + sin * y2;
+            yr = cos * y2 - sin * x2;
+            x2 = x0 + xr * sprite.scale.x;
+            y2 = y0 + yr * sprite.scale.y;
+            // Make a ray segment from the edge.
+            var dx = x2 - x1, dy = y2 - y1, length = Math.sqrt(dx*dx + dy*dy);
+            return {
+                sprite: sprite,
+                edge: {
                     start:  { x: x1, y: y1 },
                     center: { x: (x1+x2)/2, y: (y1+y2)/2 },
                     end:    { x: x2, y: y2 },
                     dx: dx / length,
                     dy: dy / length,
                     length: length,
-                };
-            }, new Util.ConcatAcc());
-        }
+                },
+            };
+        }, new Util.ConcatAcc(list));
     };
-    var SNAP_ANGLE_THRESHOLD = 10;
-    var SNAP_DISTANCE_THRESHOLD = 40;
-    var COS_SNAP_ANGLE_THRESHOLD = Math.cos(SNAP_ANGLE_THRESHOLD * Math.PI / 180);
-    var SQR_SNAP_DISTANCE_THRESHOLD = SNAP_DISTANCE_THRESHOLD*SNAP_DISTANCE_THRESHOLD;
     // Returns an offset and rotation to make object snap to target.
     // @param target The ray segment in the world to potentially snap to.
     // @param object The ray segment of the object.
     // @param pivot  The point around which the object segment will rotate.
     var snapDelta = function(target, object, pivot) {
         // Dot product of normalized vectors = cosine of angle between them.
-        var cos = target.dx * object.dx + target.dy * object.dy;
         // Negative because we want them to be anti-parallel vectors.
         // (On opposite sides of their respective geometry.)
-        if (cos > -COS_SNAP_ANGLE_THRESHOLD)
+        var cos = -(target.dx * object.dx + target.dy * object.dy);
+        if (cos < COS_SNAP_ANGLE_THRESHOLD)
             return null;
 
         // Get distance from center of object to infinite target line.
@@ -247,32 +287,80 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
         // Need angle first because ends are going to rotate around the pivot.
         // We can't reuse the original dot product for angle, because it can't distinguish cw/ccw angles.
         // We could probably use atan2 here, but we need both sin and cos anyway for snapping distance.
-        var sin = object.dx * target.dy - object.dy * target.dx;
+        // Negative here because we want to rotate backwards by the angle between them.
+        var sin = -(object.dx * target.dy - object.dy * target.dx);
         result.rotation = Math.asin(sin);
         // Using Phaser nomenclature, where rotation is radians and angle is degrees.
         result.angle = result.rotation * 180 / Math.PI;
 
         if (snapStart) {
-            x = target.start.x; y = target.start.y;
-            dx = object.start.x - pivot.x; dy = object.start.y - pivot.dy;
+            x  = target.start.x;  y  = target.start.y;
+            dx = object.end.x;    dy = object.end.y;
+            result.snap = 'start';
         } else if (snapCenter) {
-            x = target.center.x; y = target.center.y;
-            dx = object.center.x - pivot.x; dy = object.start.y - pivot.dy;
+            x  = target.center.x; y  = target.center.y;
+            dx = object.center.x; dy = object.center.y;
+            result.snap = 'center';
         } else if (snapEnd) {
-            x = target.end.x; y = target.end.y;
-            dx = object.end.x - pivot.x; dy = object.end.y - pivot.dy;
+            x  = target.end.x;    y  = target.end.y;
+            dx = object.start.x;  dy = object.start.y;
+            result.snap = 'end';
         } else {
             // x, y are already the closest point on target to (unrotated) center
-            dx = object.center.x - pivot.x; dy = object.start.y - pivot.dy;
+            dx = object.center.x; dy = object.start.y;
+            result.snap = 'nearest';
         }
-        var snapx = pivot.x + cos * dx + sin * dy;
-        var snapy = pivot.y + cos * dy - sin * dx;
-        result.dx = snapx - x;
-        result.dy = snapy - y;
+        // Rotate around pivot.
+        dx -= pivot.x; dy -= pivot.y;
+        var rotatedx = pivot.x + cos * dx + sin * dy;
+        var rotatedy = pivot.y + cos * dy - sin * dx;
+        // Move rotated object point to target point.
+        result.dx = x - rotatedx;
+        result.dy = y - rotatedy;
         result.x = pivot.x + result.dx;
         result.y = pivot.y + result.dy;
+        // Need a way to pick a snap when there are multiple choices.
+        result.score =
+            3 * result.rotation * result.rotation +
+            1 * result.dx * result.dx +
+            1 * result.dy * result.dy +
+            20 * (snapStart || snapCenter || snapEnd);
 
         return result;
+    };
+    var trySnap = function(body) {
+        var edges = getEdges(body.sprite), bestSnap, bestSnapScore = 1/0;
+        _.map(snapPool, function(target) {
+            _.map(edges, function(object) {
+                var snap = snapDelta(target.edge, object.edge, body);
+                if (snap && snap.score < bestSnapScore) {
+                    bestSnap = snap;
+                    bestSnap.sprite = target.sprite;
+                    bestSnapScore = snap.score;
+                }
+            });
+        });
+        if (bestSnap) {
+            body.rotation = bestSnap.rotation;
+            body.x = bestSnap.x;
+            body.y = bestSnap.y;
+        }
+        return bestSnap;
+    };
+    // Lock two bodies together in their current orientation.
+    var lock = function(bodyA, bodyB, strength) {
+        var dx = bodyB.body.x-bodyA.body.x, dy = bodyB.body.y-bodyA.body.y;
+        // rotate bodyB into bodyA's reference frame
+        // Radians, so use .rotation rather than .angle.
+        var dtheta = bodyB.body.rotation-bodyA.body.rotation;
+        var sin = Math.sin(dtheta), cos = -Math.cos(dtheta);
+        var dx_ = dy * sin + dx * cos, dy_ = dy * cos - dx * sin;
+
+        var constraint = game.physics.p2.createLockConstraint( bodyA, bodyB, [dx_, dy_], dtheta);
+
+        var bodyA = constraint.bodyA, bodyB = constraint.bodyB;
+        var dx_ = bodyB.position[0] - bodyA.position[0], dy_ = bodyB.position[1] - bodyA.position[1];
+        constraint.breakDistance2 = (dx_*dx_ + dy_*dy_) * (1 + (strength || 3)/1000);
     };
     var buttonFont = {
         font: "bold 67px 'Verdana'",
@@ -335,6 +423,24 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                         state.layout[key].body.setCollisionGroup(baseCollisionGroup);
                         state.layout[key].body.collides([brickCollisionGroup, rainCollisionGroup]);
                     });
+
+                    // Initialize the snap pool with the platform.
+                    var platform = state.layout.platform;
+                    var x1 = platform.x + platform.width, y1 = platform.y;
+                    var x2 = platform.x, y2 = platform.y;
+                    snapPool = [
+                        {
+                            sprite: platform,
+                            edge: {
+                                start:  { x: x1, y: y1 },
+                                center: { x: (x1+x2)/2, y: (y1+y2)/2 },
+                                end:    { x: x2, y: y2 },
+                                dx: -1,
+                                dy: 0,
+                                length: platform.width,
+                            },
+                        }
+                    ];
 
                     // Sprites for the actual materials
                     _.forOwn(pieceMap, function(pieceDef, key) {
@@ -468,7 +574,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                 });
                 drop.kill();
             }
-            game.time.events.loop(100, this.dropRain, this);
+            game.time.events.loop(DROP_TIMER_PERIOD, this.dropRain, this);
         },
         dropRain: function() {
             var game = this.game;
