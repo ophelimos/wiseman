@@ -461,7 +461,10 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                     // attach pointer events for dragging
                     logicState.addHandler(game.input, 'onDown');
                     logicState.addHandler(game.input, 'onUp');
-                }
+                },
+            update: function() {
+                    logicState.invoke('updatePhysics');
+                },
             });
 
             game.load.image('palette', 'assets/palette.png');
@@ -547,6 +550,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
         },
     });
 
+    var removedConstraints = [];
     logicState.addState('storm', {
         onPreloadGame: function(game) {
             this.game = game;
@@ -606,6 +610,24 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                     drop.frame = 0;
                 }
             }
+        },
+        updatePhysics: function() {
+            var constraintsToRemove = [];
+            for (var i in game.physics.p2.world.constraints) {
+                var constraint = game.physics.p2.world.constraints[i];
+                if (constraint.breakDistance2) {
+                    var bodyA = constraint.bodyA, bodyB = constraint.bodyB;
+                    var dx = bodyB.position[0] - bodyA.position[0], dy = bodyB.position[1] - bodyA.position[1];
+                    var distance2 = dx*dx + dy*dy;
+                    if (distance2 > constraint.breakDistance2)
+                        constraintsToRemove.push(constraint);
+                }
+            }
+            for (i in constraintsToRemove) {
+                game.physics.p2.removeConstraint(constraintsToRemove[i]);
+                removedConstraints.push(constraintsToRemove[i]);
+            }
+            constraintsToRemove = [];
         },
     });
 
