@@ -376,6 +376,18 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
         align: 'center'
     };
     var disabledFont = _.defaults({ fill: 'rgba(0,0,0,0.5)', stroke: 'rgba(255,255,255,0.2)' }, buttonFont);
+    var backgrounds = {
+        wise: [
+            ['image', 'sky', ['bg_wise'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
+            ['solid', 'ground',   [1850, 730, { body: { kinematic: 1 } }], 'sky', { x: "-500px", y: "1310px" } ],
+            ['solid', 'platform', [1000,  30, { body: { kinematic: 1 } }], { x: 0, y: 100 }, 'ground', { x: "600px", y: 0 } ],
+        ],
+        fool: [
+            ['image', 'sky', ['bg_fool'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
+            ['solid', 'ground',   [3000, 730, { body: { kinematic: 1 } }], 'sky', { x: "-500px", y: "1310px" } ],
+            ['solid', 'platform', [1000,  5, { body: { kinematic: 1 } }], { x: 0, y: 100 }, 'ground', { x: "600px", y: 0 } ],
+        ],
+    };
 
     logicState.addState('build', {
         onPreloadGame: function(game) {
@@ -394,10 +406,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                     game.physics.p2.restitution = 0.2;
                     game.physics.p2.friction = 10000;
 
-                    state.layout = Layout.add([
-                        ['image', 'sky', ['bg_' + state.background], { x: 50, y: 80 }, { x: 50, y: 80 } ],
-                        ['solid', 'ground',   [1850, 730, { body: { kinematic: 1 } }], 'sky', { x: "-500px", y: "1310px" } ],
-                        ['solid', 'platform', [1000,  30, { body: { kinematic: 1 } }], { x: 0, y: 100 }, 'ground', { x: "600px", y: 0 } ],
+                    state.layout = Layout.add(backgrounds[state.background].concat([
                         ['image', 'palette', ['palette'], { x: 100, y: 50 }, { x: "100%-36px", y: 50 } ],
                         ['button', 'done', [['256x164', 0, 0, 0, 0, buttonFont], "I’m\nDone!"], 'palette', { x: "293px", y: "839px" } ],
                         ['button', 'more', [['246x164', 0, 0, 0, 0, disabledFont], "More"], 'palette', { x: "31px", y: "839px" } ],
@@ -405,7 +414,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                         ['sprite', 'material1', ['material1', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "165px" } ],
                         ['sprite', 'material2', ['material2', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "435px" } ],
                         ['sprite', 'material3', ['material3', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "435px" } ],
-                    ]);
+                    ]));
 
                     // Collisions must be two-way: each collision group must be set to
                     // collide with all other collision groups.  One-way collisions

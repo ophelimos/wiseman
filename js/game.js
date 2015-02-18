@@ -109,9 +109,8 @@ function(_, Phaser, Layout, StateMachine){
                         ['text', 'welcome', ["Welcome to the Parable\nof the Wise and Foolish Builders!",
                                 { font: "bold 36px 'Verdana'", fill: '#FFF', stroke: '#000', strokeThickness: 4, align: 'center' }
                             ], { x: 50, y: 0 }, { x: 50, y: '50px' } ],
-                        ['button', 'build', ['mainMenu', "Let's build!"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+20px" }],
-                        ['button', 'joshdemow', ['mainMenu', "Wise Josh"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+20px" }],
-                        ['button', 'joshdemof', ['mainMenu', "Foolish Josh"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+20px" }],
+                        ['button', 'buildw', ['mainMenu', "Build on rock"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+150px" }],
+                        ['button', 'buildf', ['mainMenu', "Build on sand"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+20px" }],
                     ]);
                     global.layout = layout;
                 }
@@ -125,7 +124,8 @@ function(_, Phaser, Layout, StateMachine){
         },
         onButton: function(which) {
             var fn = {
-                build: function() { logicState.to('build', 'wise'); },
+                buildw: function() { logicState.to('build', 'wise'); },
+                buildf: function() { logicState.to('build', 'fool'); },
                 joshdemow: function() { logicState.to('joshdemo', 'wise'); },
                 joshdemof: function() { logicState.to('joshdemo', 'fool'); },
             }[which];
