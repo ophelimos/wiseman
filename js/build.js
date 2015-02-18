@@ -324,7 +324,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             3 * result.rotation * result.rotation +
             1 * result.dx * result.dx +
             1 * result.dy * result.dy +
-            20 * (snapStart || snapCenter || snapEnd);
+            -20 * (snapStart || snapCenter || snapEnd);
 
         return result;
     };
