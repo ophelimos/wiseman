@@ -551,6 +551,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
     });
 
     var removedConstraints = [];
+    var peakDropCount = 0;
     logicState.addState('storm', {
         onPreloadGame: function(game) {
             this.game = game;
@@ -581,7 +582,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             game.time.events.loop(DROP_TIMER_PERIOD, this.dropRain, this);
         },
         dropRain: function() {
-            var game = this.game;
+            var game = this.game, dropCount = 0;
             // Kill any stationary drops.
             raindrops.forEachAlive(function(drop) {
                 // Don't kill splashing drops; wait for them to finish.
@@ -594,8 +595,11 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                 }
                 var velocity = drop.body.velocity;
                 var speed2 = velocity.x*velocity.x + velocity.y*velocity.y;
-                if (speed2 < DROP_VELOCITY_THRESHOLD*DROP_VELOCITY_THRESHOLD)
+                if (speed2 < DROP_VELOCITY_THRESHOLD*DROP_VELOCITY_THRESHOLD) {
                     drop.kill();
+                    return;
+                }
+                dropCount += 1;
             });
             var n = DROP_COUNT_GEN();
             while (n--) {
@@ -610,7 +614,13 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                     // As a last resort, kill anything that survives for 10 seconds.
                     drop.lifespan = 10000;
                     drop.frame = 0;
+                    dropCount += 1;
                 }
+            }
+            if (dropCount > peakDropCount) {
+                peakDropCount = dropCount;
+                if (dropCount > 40)
+                    console.log("Peak drop count: ", dropCount);
             }
         },
         updatePhysics: function() {
