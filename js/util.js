@@ -45,20 +45,47 @@
         return Placeholder;
     });
 
-    define('Random', {
-        // Poisson distribution: number of events in an arbitrary fixed interval given an expected average.
-        // http://en.wikipedia.org/wiki/Poisson_distribution#Generating_Poisson-distributed_random_variables
-        poisson: function(expected) {
-            return function() {
-                var x = 0, p = Math.exp(-expected), s = p, u = Math.random();
-                while (u > s) {
-                    x += 1;
-                    p *= expected / x;
-                    s += p;
+    var noiseBox;
+    define('Random',
+    ['lodash'],
+    function(_) {
+        return {
+            // Poisson distribution: number of events in an arbitrary fixed interval given an expected average.
+            // http://en.wikipedia.org/wiki/Poisson_distribution#Generating_Poisson-distributed_random_variables
+            poisson: function(expected) {
+                return function() {
+                    var x = 0, p = Math.exp(-expected), s = p, u = Math.random();
+                    while (u > s) {
+                        x += 1;
+                        p *= expected / x;
+                        s += p;
+                    }
+                    return x;
+                };
+            },
+            noise1d: function(index) {
+                if (!noiseBox) {
+                    noiseBox = [];
+                    for (var i = 0; i < 256; ++i)
+                        noiseBox.push(i);
+                    noiseBox = _.shuffle(noiseBox);
                 }
-                return x;
-            };
-        },
+                return function(t) {
+                    var t0 = Math.floor(t),
+                        k0 = noiseBox[(noiseBox[(noiseBox[index & 255] + t0) & 255] + (t0 >> 8)) & 255],
+                        t1 = t0 + 1,
+                        k1 = noiseBox[(noiseBox[(noiseBox[index & 255] + t1) & 255] + (t1 >> 8)) & 255],
+                        f = t - t0;
+                    // Scale the output to 0 to 1 range.
+                    k0 = (k0 & 15) / 15;
+                    k1 = (k1 & 15) / 15;
+                    // Smooth so derivative is 0 at all integral t.
+                    f = 3*f*f - 2*f*f*f;
+                    // Interpolate and scale to -1 .. +1.
+                    return ((f * k1 + (1 - f) * k0) - 0.5) * 2;
+                };
+            },
+        };
     });
 
     define('Util',

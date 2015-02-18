@@ -19,6 +19,8 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
     var SNAP_DISTANCE_THRESHOLD = 40;
     var COS_SNAP_ANGLE_THRESHOLD = Math.cos(SNAP_ANGLE_THRESHOLD * Math.PI / 180);
     var SQR_SNAP_DISTANCE_THRESHOLD = SNAP_DISTANCE_THRESHOLD*SNAP_DISTANCE_THRESHOLD;
+    var WIND_GEN = Random.noise1d(17);
+    var MAX_WIND_STRENGTH = 2000;
 
     var bricks;
     var raindrops;
@@ -604,12 +606,13 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             var n = DROP_COUNT_GEN();
             while (n--) {
                 // Find a raindrop and drop it
-                var drop = raindrops.getFirstDead();
+                var drop = raindrops.getFirstDead(), speed;
                 if (drop) {
                     drop.body.x = Math.random() * (game.world.width - drop.width);
                     drop.body.y = Math.random() * -2000;
-                    drop.body.velocity.x = 0;
-                    drop.body.velocity.y = 500 + Math.random() * 2000;
+                    speed = 0.05 + Math.random() * 0.2;
+                    drop.body.velocity.x = game.physics.p2.gravity.x * speed;
+                    drop.body.velocity.y = game.physics.p2.gravity.y * speed;
                     drop.revive();
                     // As a last resort, kill anything that survives for 10 seconds.
                     drop.lifespan = 10000;
@@ -624,6 +627,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             }
         },
         updatePhysics: function() {
+            var game = this.game;
             var constraintsToRemove = [];
             for (var i in game.physics.p2.world.constraints) {
                 var constraint = game.physics.p2.world.constraints[i];
@@ -640,6 +644,8 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                 removedConstraints.push(constraintsToRemove[i]);
             }
             constraintsToRemove = [];
+            var t = game.time.totalElapsedSeconds(), wind = 0.75 * WIND_GEN(t * 0.3) + 0.25 * WIND_GEN(t * 0.8);
+            game.physics.p2.gravity.x = wind * MAX_WIND_STRENGTH;
         },
     });
 
