@@ -377,16 +377,63 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
     };
     var disabledFont = _.defaults({ fill: 'rgba(0,0,0,0.5)', stroke: 'rgba(255,255,255,0.2)' }, buttonFont);
     var backgrounds = {
-        wise: [
-            ['image', 'sky', ['bg_wise'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
-            ['solid', 'ground',   [1850, 730, { body: { kinematic: 1 } }], 'sky', { x: "-500px", y: "1310px" } ],
-            ['solid', 'platform', [1000,  30, { body: { kinematic: 1 } }], { x: 0, y: 100 }, 'ground', { x: "600px", y: 0 } ],
-        ],
-        fool: [
-            ['image', 'sky', ['bg_fool'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
-            ['solid', 'ground',   [3000, 730, { body: { kinematic: 1 } }], 'sky', { x: "-500px", y: "1310px" } ],
-            ['solid', 'platform', [1000,  5, { body: { kinematic: 1 } }], { x: 0, y: 100 }, 'ground', { x: "600px", y: 0 } ],
-        ],
+        wise: {
+            layout: [
+                ['image', 'sky', ['bg_wise'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
+                ['solid', 'ground',   [1850, 730, { body: { kinematic: 1 } }], 'sky', { x: "-500px", y: "1310px" } ],
+                ['solid', 'platform', [1000,  30, { body: { kinematic: 1 } }], { x: 0, y: 100 }, 'ground', { x: "600px", y: 0 } ],
+            ],
+            platform: {
+                lock: 'platform',
+                x: 190,
+                y: 1280,
+                width: 819,
+            },
+        },
+        fool: {
+            layout: [
+                ['image', 'sky', ['bg_fool'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
+                ['solid', 'ground',   [3000, 730, { body: { kinematic: 1 } }], 'sky', { x: "-500px", y: "1310px" } ],
+                ['solid', 'sand1',  [40,  40, { body: { dynamic: 1 } }], { x: 0, y: 100 }, 'ground', { x: "600px", y: 0 } ],
+                ['solid', 'sand2',  [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand3',  [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand4',  [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand5',  [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand6',  [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand7',  [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand8',  [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand9',  [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand10', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand11', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand12', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand13', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand14', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand15', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand16', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand17', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand18', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand19', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand20', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand21', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand22', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand23', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand24', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand25', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand26', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand27', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand28', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand29', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand30', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand31', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand32', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+                ['solid', 'sand33', [40,  40, { body: { dynamic: 1 } }], '^', { x: 100, y: 0 } ],
+            ],
+            platform: {
+                x: 190,
+                y: 1280,
+                width: 819,
+            },
+        },
     };
 
     logicState.addState('build', {
@@ -406,7 +453,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                     game.physics.p2.restitution = 0.2;
                     game.physics.p2.friction = 10000;
 
-                    state.layout = Layout.add(backgrounds[state.background].concat([
+                    state.layout = Layout.add(backgrounds[state.background].layout.concat([
                         ['image', 'palette', ['palette'], { x: 100, y: 50 }, { x: "100%-36px", y: 50 } ],
                         ['button', 'done', [['256x164', 0, 0, 0, 0, buttonFont], "I’m\nDone!"], 'palette', { x: "293px", y: "839px" } ],
                         ['button', 'more', [['246x164', 0, 0, 0, 0, disabledFont], "More"], 'palette', { x: "31px", y: "839px" } ],
@@ -431,17 +478,28 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                     game.physics.p2.setImpactEvents(true);
 
                     _.forEach(['ground', 'platform'], function(key) {
+                        if (!state.layout[key])
+                            return;
                         state.layout[key].body.setCollisionGroup(baseCollisionGroup);
-                        state.layout[key].body.collides([brickCollisionGroup, rainCollisionGroup]);
+                        state.layout[key].body.collides([baseCollisionGroup, brickCollisionGroup, rainCollisionGroup]);
                     });
+                    for (var i = 1; i <= 33; ++i) {
+                        var sprite = state.layout['sand' + i];
+                        if (!sprite)
+                            break;
+                        sprite.body.clearShapes();
+                        sprite.body.addCircle(sprite.width/2, 0, 0);
+                        sprite.body.setCollisionGroup(baseCollisionGroup);
+                        sprite.body.collides([baseCollisionGroup, brickCollisionGroup]);
+                    }
 
                     // Initialize the snap pool with the platform.
-                    var platform = state.layout.platform;
+                    var platform = backgrounds[state.background].platform;
                     var x1 = platform.x + platform.width, y1 = platform.y;
                     var x2 = platform.x, y2 = platform.y;
                     snapPool = [
                         {
-                            sprite: platform,
+                            sprite: platform.lock && state.layout[platform.lock],
                             edge: {
                                 start:  { x: x1, y: y1 },
                                 center: { x: (x1+x2)/2, y: (y1+y2)/2 },
