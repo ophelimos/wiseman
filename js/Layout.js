@@ -48,14 +48,16 @@ function(_, Placeholder) {
     // Layout.add([
     //     [game.add.bitmap, "foo", []]
     // ]);
-    Layout.add = function(group, layout) {
+    Layout.add = function(group, layout, layoutMap) {
         if (!Layout.hasOwnProperty('context'))
             console.error("You might want to set Layout.context.");
-        if (!layout) {
+        if (group instanceof Array) {
+            layoutMap = layout;
             layout = group;
             group = Layout.world;
         }
-        var layoutMap = { '': group };
+        if (!layoutMap)
+            layoutMap = { '': group };
         _.forEach(layout, function(item, index) {
             var createFunc, name, createArgs, reference, refAlign, objAlign;
             var pattern = "".concat.apply("", _.map(item, function(x) { return (typeof x)[0]; } )).substr(3);
