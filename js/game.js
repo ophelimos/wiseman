@@ -107,7 +107,7 @@ function(_, Phaser, Layout, StateMachine){
                         ['image', 'sky',    ['menubg'], { x: 50, y: 80 }, { x: 50, y: 80 } ],
                         ['solid', 'shade',  [game.width, game.height, { fill: [0,0,0,0.5] }], { x: 0, y: 0 } ],
                         ['text', 'welcome', ["Welcome to the Parable\nof the Wise and Foolish Builders!",
-                                { font: "bold 36px 'Verdana'", fill: '#FFF', stroke: '#000', strokeThickness: 4, align: 'center' }
+                                { font: "bold 48px 'Verdana'", fill: '#FFF', stroke: '#000', strokeThickness: 4, align: 'center' }
                             ], { x: 50, y: 0 }, { x: 50, y: '50px' } ],
                         ['button', 'buildw', ['mainMenu', "Build on rock"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+150px" }],
                         ['button', 'buildf', ['mainMenu', "Build on sand"], { x: 50, y: 0 }, '^', { x: 50, y: "100%+20px" }],

@@ -550,6 +550,18 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
         },
         onButton: function(which) {
             if (which === 'done') {
+                if (bricks.length === 0) {
+                    // Didn't build anything...
+                    Layout.add([
+                        ['text', 'complainy', [
+                                "All that behold it\n" +
+                                "begin to mock him, saying,\n" +
+                                "“This man began to build,\n" +
+                                "and was not able to finish.”",
+                                { font: "bold 48px 'Verdana'", fill: '#FFF', stroke: '#000', strokeThickness: 4, align: 'center'}
+                            ], { x: 50, y: 50 }, { x: 50, y: 50 } ],
+                    ], this.layout);
+                }
                 // Rain
                 logicState.to('storm');
             }
