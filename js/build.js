@@ -495,8 +495,8 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
 
                     // Initialize the snap pool with the platform.
                     var platform = backgrounds[state.background].platform;
-                    var x1 = platform.x + platform.width, y1 = platform.y;
-                    var x2 = platform.x, y2 = platform.y;
+                    var x1 = platform.x + platform.width, y1 = state.layout.sky.y + platform.y;
+                    var x2 = platform.x, y2 = state.layout.sky.y + platform.y;
                     snapPool = [
                         {
                             sprite: platform.lock && state.layout[platform.lock],
