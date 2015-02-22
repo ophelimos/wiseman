@@ -603,10 +603,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
         },
         onDown: function(input, event) {
             // Check if we hit a brick
-            var brickbodies = [];
-            bricks.forEach([].push, brickbodies);
-            
-            var hitbodies = this.game.physics.p2.hitTest(event.position, brickbodies);
+            var hitbodies = this.game.physics.p2.hitTest(event.position, bricks.children);
             
             if (hitbodies.length)
                 drag.begin(hitbodies[0].parent, event.position.x, event.position.y);
