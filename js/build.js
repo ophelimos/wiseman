@@ -538,6 +538,8 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                 },
             });
 
+            game.load.image('bg_wise', 'assets/bg_wise.jpg');
+            game.load.image('bg_fool', 'assets/bg_fool.jpg');
             game.load.image('palette', 'assets/palette.png');
             game.load.image('snapguide', 'assets/snapguide.png');
             _.forEach(pieces, function(piece, index) {
