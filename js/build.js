@@ -63,13 +63,15 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
         },
         end: function(x, y) {
             if (this.object) {
-                var snap = trySnap(this.object);
+                var snap = trySnap(this.object), sprite = this.object.sprite;;
                 if (snap) {
                     if (snap.sprite)
-                        lock(this.object.sprite, snap.sprite, 5);
-                    getEdges(this.object.sprite, snapPool);
+                        lock(sprite, snap.sprite, 5);
+                    getEdges(sprite, snapPool);
                 } else {
-                    this.object.sprite.destroy(true);
+                    var key = sprite.name;
+                    snapPool = _.reject(snapPool, function(snap){ return snap.sprite === sprite; });
+                    sprite.destroy(true);
                 }
             }
             this.object = undefined;
