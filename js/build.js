@@ -1,5 +1,5 @@
-define(['lodash', 'phaser', 'Layout', 'StateMachine', 'game', 'Random', 'Util'],
-function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
+define(['lodash', 'phaser', 'PhaserExt', 'Layout', 'StateMachine', 'game', 'Random', 'Util'],
+function(_, Phaser, PhaserExt, Layout, StateMachine, logicState, Random, Util){
     "use strict";
 
     var global = window;
@@ -70,6 +70,7 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                     getEdges(sprite, snapPool);
                 } else {
                     var key = sprite.name;
+                    --brickCountInLayer[pieceMap[key].z || 0];
                     snapPool = _.reject(snapPool, function(snap){ return snap.sprite === sprite; });
                     sprite.destroy(true);
                 }
@@ -81,25 +82,26 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             }
         }
     };
+    var brickCountInLayer = [0, 0, 0, 0];
     var pieceMap = {}, pieces = [
         {
             image: 'wisemanhouse_leftroof_prelim.png',
             outline: [
-                495, 283,
-                495, 66,
-                183, 230,
-                183, 283,
+                1*144, 3*144,
+                4*144, 3*144,
+                4*144, 1*144,
             ],
+            z: 3,
             density: WOOD_DENSITY,
         },
         {
             image: 'wisemanhouse_rightroof_prelim.png',
             outline: [
-                330, 283,
-                330, 230,
-                0, 60,
-                0, 283,
+                0*144, 1*144,
+                0*144, 3*144,
+                3*144, 3*144,
             ],
+            z: 2,
             density: WOOD_DENSITY,
         },
         {
@@ -156,10 +158,14 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                 area = -area;
             }
             piece.centroid = { x: measure.cx, y: measure.cy };
+        } else if (piece.frames) {
+            piece.width = image.width / piece.frames.x | 0;
+            piece.height = image.height / piece.frames.y | 0;
+            area = piece.width * piece.height;
         } else {
             piece.width = image.width;
             piece.height = image.height;
-            area = image.width * image.height;
+            area = piece.width * piece.height;
         }
         piece.mass = piece.density * area;
     };
@@ -459,10 +465,10 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                         ['image', 'palette', ['palette'], { x: 100, y: 50 }, { x: "100%-36px", y: 50 } ],
                         ['button', 'done', [['256x164', 0, 0, 0, 0, buttonFont], "I’m\nDone!"], 'palette', { x: "293px", y: "839px" } ],
                         ['button', 'more', [['246x164', 0, 0, 0, 0, disabledFont], "More"], 'palette', { x: "31px", y: "839px" } ],
-                        ['sprite', 'material0', ['material0', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "165px" } ],
-                        ['sprite', 'material1', ['material1', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "165px" } ],
-                        ['sprite', 'material2', ['material2', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "435px" } ],
-                        ['sprite', 'material3', ['material3', 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "435px" } ],
+                        ['sprite', 'material0', [pieces[0].texture, 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "165px" } ],
+                        ['sprite', 'material1', [pieces[1].texture, 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "165px" } ],
+                        ['sprite', 'material2', [pieces[2].texture, 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "154px", y: "435px" } ],
+                        ['sprite', 'material3', [pieces[3].texture, 0, { scale: 0.4 }], { x: 50, y: 50 }, 'palette', { x: "421px", y: "435px" } ],
                     ]));
 
                     // Collisions must be two-way: each collision group must be set to
@@ -544,7 +550,45 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
             game.load.image('snapguide', 'assets/snapguide.png');
             _.forEach(pieces, function(piece, index) {
                 var key = 'material' + index;
-                game.load.image(key, 'assets/building/' + piece.image);
+                if (piece.alpha) {
+                    var loadStage = 0, textureKey = key + '_texture', alphaKey = key + '_alpha';
+                    game.load.image(textureKey, 'assets/building/' + piece.image);
+                    game.load.image(alphaKey, 'assets/building/' + piece.alpha);
+                    game.load.onFileComplete.add(function(progressPercent, loadedKey, success, loadedCount, totalCount) {
+                        if ((loadedKey === textureKey || loadedKey === alphaKey) && ++loadStage === 2) {
+                            // Why doesn't it just give us the loaded resource?
+                            var texture = game.cache.getImage(textureKey), alpha = game.cache.getImage(alphaKey);
+                            // There's an updateFrame to do this after the resource is added to cache, but only for Images.
+                            var frameData;
+                            if (piece.frames) {
+                                // AnimationParser.spriteSheet should work, but, again, only works for Images.
+                                frameData = PhaserExt.makeFrameGrid(game, texture.width, texture.height, piece.frames);
+                                piece.frames.total = frameData.total;
+                            }
+                            // Stir to combine.
+                            var combined = new Phaser.BitmapData(game, key, texture.width, texture.height);
+                            combined.alphaMask(texture, alpha);
+                            game.cache.addBitmapData(key, combined, frameData);
+                            // For BitmapData, the key for the Sprite is the actual object, not the key.
+                            piece.texture = combined;
+                        }
+                    });
+                } else {
+                    game.load.image(key, 'assets/building/' + piece.image);
+                    if (piece.frames) {
+                        game.load.onFileComplete.add(function(progressPercent, loadedKey, success, loadedCount, totalCount) {
+                            if (loadedKey === key) {
+                                // AnimationParser.spriteSheet *would* work here, but I had to write this so I'm gonna use it.
+                                var texture = game.cache.getImage(key);
+                                var frameData = PhaserExt.makeFrameGrid(game, texture.width, texture.height, piece.frames);
+                                game.cache.updateFrameData(key, frameData);
+                                piece.frames.total = frameData.total;
+                            }
+                        });
+                    }
+                    // For an Image, the key for the Sprite is the resource key.
+                    piece.texture = key;
+                }
                 pieceMap[key] = piece;
             });
         },
@@ -584,17 +628,23 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
         },
         onInputDown: function(events, button) {
             var game = this.game;
-            var key = button.name;
-            var brickSprite = bricks.create(game.input.activePointer.x, game.input.activePointer.y, key);
+            var key = button.name, definition = pieceMap[key];
+            var brickSprite;
+            if (definition.frames) {
+                var frame = game.rnd.between(0, definition.frames.total - 1);
+                brickSprite = new Phaser.Sprite(game, game.input.activePointer.x, game.input.activePointer.y, definition.texture, frame);
+            } else {
+                brickSprite = new Phaser.Sprite(game, game.input.activePointer.x, game.input.activePointer.y, definition.texture);
+            }
             brickSprite.scale.x = PIECE_SCALE;
             brickSprite.scale.y = PIECE_SCALE;
             brickSprite.name = key;
             brickSprite.inputEnabled = true;
             brickSprite.input.useHandCursor = true;
             game.physics.p2.enable(brickSprite);
-            if (pieceMap[key].outline) {
+            if (definition.outline) {
                 brickSprite.body.clearShapes();
-                var poly = [], i, polygon = pieceMap[key].outline, n = polygon.length;
+                var poly = [], i, polygon = definition.outline, n = polygon.length;
                 for (i = 0; i < n; i += 2) {
                     var x = polygon[i+0], y = polygon[i+1];
                     poly.push(PIECE_SCALE * x - brickSprite.width/2);
@@ -603,16 +653,21 @@ function(_, Phaser, Layout, StateMachine, logicState, Random, Util){
                 brickSprite.body.addPolygon({ skipSimpleCheck: 1 }, poly);
                 // P2 internally adjusts the polygon so that its centroid aligns with the sprite anchor.
                 // We need to adjust the sprite anchor to match. (where 0 = top/left, 0.5 = center, 1 = bottom/right)
-                brickSprite.anchor.x = PIECE_SCALE * pieceMap[key].centroid.x / brickSprite.width;
-                brickSprite.anchor.y = PIECE_SCALE * pieceMap[key].centroid.y / brickSprite.height;
+                brickSprite.anchor.x = PIECE_SCALE * definition.centroid.x / brickSprite.width;
+                brickSprite.anchor.y = PIECE_SCALE * definition.centroid.y / brickSprite.height;
             }
             brickSprite.body.setCollisionGroup(brickCollisionGroup);
             brickSprite.body.collides([brickCollisionGroup, baseCollisionGroup, rainCollisionGroup]);
             // Try and make these things a little more realistic
             // brickSprite.body.damping = 0.9;
-            brickSprite.body.mass = pieceMap[key].mass;
+            brickSprite.body.mass = definition.mass;
             // Make sure inertia is sane when physics start to apply.
             brickSprite.body.inertia = 0;
+            var z, index = 0;
+            for (z = definition.z || 0; z >= 0; --z)
+                index += brickCountInLayer[z];
+            bricks.addAt(brickSprite, index);
+            ++brickCountInLayer[definition.z || 0];
 
             drag.begin(brickSprite.body, game.input.activePointer.x, game.input.activePointer.y);
             drag.object.motionState = Phaser.Physics.P2.Body.STATIC;
