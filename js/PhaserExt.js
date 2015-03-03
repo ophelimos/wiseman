@@ -1,4 +1,4 @@
-define(['lodash', 'Phaser'],
+define(['lodash', 'phaser'],
 function(_, Phaser) {
     "use strict";
 
